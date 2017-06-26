@@ -28,13 +28,24 @@
 
 void RETRACE_IMPLEMENTATION(perror)(const char *s)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s};
 	rtr_perror_t real_perror;
 
 	real_perror = RETRACE_GET_REAL(perror);
 
-	trace_printf(1, "perror(\"%s\");\n", s);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "perror";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_END;
+	retrace_event (&event_info);
 
 	real_perror(s);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 }
 
 RETRACE_REPLACE(perror)

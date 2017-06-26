@@ -1,4 +1,5 @@
 #!/bin/sh
+
 ../retrace -f ../retrace.conf.example ./env
 ../retrace -f ../retrace.conf.example ./exit
 ../retrace -f ../retrace.conf.example ./file
@@ -11,3 +12,7 @@
 ../retrace -f ../retrace.conf.example ./str
 ../retrace -f ../retrace.conf.example ./time
 ../retrace -f ../retrace.conf.example ./dlopen
+../retrace -f ../retrace.conf.example ./dir
+../retrace -f ../retrace.conf.example ./popen
+../retrace -f ../retrace.conf.example ./char
+

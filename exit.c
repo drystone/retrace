@@ -28,11 +28,19 @@
 
 void RETRACE_IMPLEMENTATION(exit)(int status)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void *parameter_values[] = {&status};
 	rtr_exit_t real_exit;
 
-	real_exit = RETRACE_GET_REAL(exit);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "exit";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_END;
+	retrace_event (&event_info);
 
-	trace_printf(1, "exit(%s%d%s);\n", VAR, status, RST);
+	real_exit = RETRACE_GET_REAL(exit);
 
 	real_exit(status);
 }

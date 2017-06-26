@@ -32,38 +32,85 @@
 
 int RETRACE_IMPLEMENTATION(unsetenv)(const char *name)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&name};
+	int r;
 	rtr_unsetenv_t real_unsetenv;
 
 	real_unsetenv = RETRACE_GET_REAL(unsetenv);
 
-	trace_printf(1, "unsetenv(\"%s\");\n", name);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "unsetenv";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
 
-	return real_unsetenv(name);
+	r = real_unsetenv(name);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (r);
 }
 
 RETRACE_REPLACE(unsetenv)
 
 int RETRACE_IMPLEMENTATION(putenv)(char *string)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&string};
+	int r;
+
 	rtr_putenv_t real_putenv;
 
 	real_putenv = RETRACE_GET_REAL(putenv);
 
-	trace_printf(1, "putenv(\"%s\");\n", string);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "putenv";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
 
-	return real_putenv(string);
+	r = real_putenv(string);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (r);
 }
 
 RETRACE_REPLACE(putenv)
 
 char *RETRACE_IMPLEMENTATION(getenv)(const char *envname)
 {
-	rtr_getenv_t real_getenv = RETRACE_GET_REAL(getenv);
-	char *env = real_getenv(envname);
-	if (env != NULL)
-	    trace_printf(1, "getenv(\"%s\"); [\"%s\"]\n", envname, env);
-	else
-	    trace_printf(1, "getenv(\"%s\"); [NULL]\n", envname, env);
+  	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&envname};
+	rtr_getenv_t real_getenv;
+	char *env = NULL;
+
+	real_getenv = RETRACE_GET_REAL(getenv);
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "getenv";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &env;
+
+	retrace_event (&event_info);
+
+	env = real_getenv(envname);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
 	return (env);
 }
 
@@ -71,12 +118,28 @@ RETRACE_REPLACE(getenv)
 
 int RETRACE_IMPLEMENTATION(uname)(struct utsname *buf)
 {
+
 	int ret;
 	rtr_uname_t real_uname;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_UTSNAME, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&buf};
 
 	real_uname = RETRACE_GET_REAL(uname);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "uname";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &ret;
+	retrace_event (&event_info);
+
 	ret = real_uname(buf);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
 	if (ret == 0)
 		trace_printf(1, "uname(); [%s, %s, %s, %s, %s]\n", buf->sysname, buf->nodename,
 				buf->release, buf->version, buf->machine);

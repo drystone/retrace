@@ -31,16 +31,27 @@
 char *RETRACE_IMPLEMENTATION(strstr)(const char *s1, const char *s2)
 {
 	rtr_strstr_t real_strstr;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s1, &s2};
+	char *result = NULL;
 
 	real_strstr = RETRACE_GET_REAL(strstr);
 
-	trace_printf(1, "strstr(\"");
-	trace_printf_str(s1);
-	trace_printf(0, "\", \"");
-	trace_printf_str(s2);
-	trace_printf(0, "\");\n");
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strstr";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
 
-	return real_strstr(s1, s2);
+	result = real_strstr(s1, s2);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (result);
 }
 
 RETRACE_REPLACE(strstr)
@@ -49,22 +60,25 @@ size_t RETRACE_IMPLEMENTATION(strlen)(const char *s)
 {
 	size_t len;
 	rtr_strlen_t real_strlen;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s};
+
 
 	real_strlen = RETRACE_GET_REAL(strlen);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strlen";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &len;
+	retrace_event (&event_info);
+
 	len = real_strlen(s);
 
-	if (get_tracing_enabled()) {
-		int old_trace_state;
-
-		old_trace_state = trace_disable();
-
-		trace_printf(1, "strlen(\"%p", s);
-		trace_printf_str(s);
-		trace_printf(0, "\"); [len: %zu]\n", len);
-
-		trace_restore(old_trace_state);
-	}
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return len;
 }
@@ -74,16 +88,27 @@ RETRACE_REPLACE(strlen)
 int RETRACE_IMPLEMENTATION(strncmp)(const char *s1, const char *s2, size_t n)
 {
 	rtr_strncmp_t real_strncmp;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s1, &s2, &n};
+	int result;
 
 	real_strncmp = RETRACE_GET_REAL(strncmp);
 
-	trace_printf(1, "strncmp(\"");
-	trace_printf_str(s1);
-	trace_printf(0, "\", \"");
-	trace_printf_str(s2);
-	trace_printf(0, "\", %zu);\n", n);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strncmp";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
 
-	return real_strncmp(s1, s2, n);
+	result = real_strncmp(s1, s2, n);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (result);
 }
 
 RETRACE_REPLACE(strncmp)
@@ -91,126 +116,165 @@ RETRACE_REPLACE(strncmp)
 int RETRACE_IMPLEMENTATION(strcmp)(const char *s1, const char *s2)
 {
 	rtr_strcmp_t real_strcmp;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s1, &s2};
+	int result;
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strcmp";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
 
 	real_strcmp = RETRACE_GET_REAL(strcmp);
 
-	if (get_tracing_enabled()) {
-		int old_trace_state;
+	result = real_strcmp(s1, s2);
 
-		old_trace_state = trace_disable();
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
-		trace_printf(1, "strcmp(\"");
-		trace_printf_str(s1);
-		trace_printf(0, "\", \"");
-		trace_printf_str(s2);
-		trace_printf(0, "\");\n");
-
-		trace_restore(old_trace_state);
-	}
-
-	return real_strcmp(s1, s2);
+	return (result);
 }
 
 RETRACE_REPLACE(strcmp)
 
 char *RETRACE_IMPLEMENTATION(strncpy)(char *s1, const char *s2, size_t n)
 {
-	size_t len = 0;
 	rtr_strncpy_t real_strncpy;
-	rtr_strlen_t real_strlen;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s1, &s2, &n};
+	char *result = NULL;
 
 	real_strncpy	= RETRACE_GET_REAL(strncpy);
-	real_strlen	= RETRACE_GET_REAL(strlen);
 
-	len = real_strlen(s2);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strncpy";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
 
-	trace_printf(1, "strncpy(%p, \"", s2);
-	trace_printf_str(s2);
-	trace_printf(0, "\", %zu); [len: %d]\n", n, len);
+	result = real_strncpy(s1, s2, n);
 
-	return real_strncpy(s1, s2, n);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (result);
 }
 
 RETRACE_REPLACE(strncpy)
 
 char *RETRACE_IMPLEMENTATION(strcat)(char *s1, const char *s2)
 {
-	size_t len;
 	rtr_strcat_t real_strcat;
-	rtr_strlen_t real_strlen;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s1, &s2};
+	char *result = NULL;
 
 	real_strcat	= RETRACE_GET_REAL(strcat);
-	real_strlen	= RETRACE_GET_REAL(strlen);
 
-	len = real_strlen(s2);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strcat";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
 
-	trace_printf(1, "strcat(%p, \"", s1);
-	trace_printf_str(s2);
-	trace_printf(0, "\"); [len %zu]\n", len);
+	result = real_strcat(s1, s2);
 
-	return real_strcat(s1, s2);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (result);
 }
 
 RETRACE_REPLACE(strcat)
 
 char *RETRACE_IMPLEMENTATION(strncat)(char *s1, const char *s2, size_t n)
 {
-	size_t len;
 	rtr_strncat_t real_strncat;
-	rtr_strlen_t real_strlen;
+	char *result = NULL;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s1, &s2, &n};
 
 	real_strncat	= RETRACE_GET_REAL(strncat);
-	real_strlen	= RETRACE_GET_REAL(strlen);
 
-	len = real_strlen(s2) + 1;
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strncat";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
 
-	trace_printf(1, "strncat(%p, \"", s1);
-	trace_printf_str(s2);
-	trace_printf(0, "\", %zu); [len: %zu]\n", n, len);
+	result = real_strncat(s1, s2, n);
 
-	return real_strncat(s1, s2, n);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (result);
 }
 
 RETRACE_REPLACE(strncat)
 
 char *RETRACE_IMPLEMENTATION(strcpy)(char *s1, const char *s2)
 {
-	size_t len;
 	rtr_strcpy_t real_strcpy;
-	rtr_strlen_t real_strlen;
+	char *result = NULL;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s1, &s2};
 
 	real_strcpy = RETRACE_GET_REAL(strcpy);
-	real_strlen = RETRACE_GET_REAL(strlen);
 
-	len = real_strlen(s2);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strcpy";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
 
-	trace_printf(1, "strcpy(%p, \"", s1);
-	trace_printf_str(s2);
-	trace_printf(0, "\"); [len: %zu]\n", len);
+	result = real_strcpy(s1, s2);
 
-	return real_strcpy(s1, s2);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (result);
 }
 
 RETRACE_REPLACE(strcpy)
 
 char *RETRACE_IMPLEMENTATION(strchr)(const char *s, int c)
 {
-	static char specials[] = "\nn\rr\tt";
 	rtr_strchr_t real_strchr;
-	char *p, *result;
+	char *result = NULL;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_CHAR, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&s, &c};
 
 	real_strchr = RETRACE_GET_REAL(strchr);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "strchr";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+
 	result = real_strchr(s, c);
 
-	p = real_strchr(specials, c);
-
-	trace_printf(1, "strchr(\"");
-	trace_printf_str(s);
-	if (p == NULL)
-	    trace_printf(0, "\", '%c')[%p]\n", c, result);
-	else
-	    trace_printf(0, "\", '" VAR "\\%c" RST "')[%p]\n", *(p+1), result);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return (result);
 }

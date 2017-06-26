@@ -32,33 +32,31 @@
 #define _DONT_USE_CTYPE_INLINE_
 #include <runetype.h>
 #undef putc
-#endif 
+#endif
 #include <ctype.h>
 
 #include <string.h>
 
-static void
-trace_putc(const char *name, int c, FILE* stream)
-{
-	static char specials[] = "\nn\rr\tt";
-	rtr_fileno_t real_fileno;
-	rtr_strchr_t real_strchr;
-	char *p;
-
-	real_fileno = RETRACE_GET_REAL(fileno);
-	real_strchr = RETRACE_GET_REAL(strchr);
-
-	p = c == '\0' ? " 0" : real_strchr(specials, c);
-
-	trace_printf(0,
-	    p == NULL ? "%s('%c', %d)\n" : "%s(" VAR "'\\%c'" RST ", %d)\n",
-	    name, p == NULL ? c : *(p + 1), real_fileno(stream));
-}
-
 int
 RETRACE_IMPLEMENTATION(putc)(int c, FILE *stream)
 {
-	trace_putc("putc", c, stream);
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&c, stream};
+	int r;
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "putc";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
+	r = RETRACE_GET_REAL(putc)(c, stream);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return (RETRACE_GET_REAL(putc)(c, stream));
 }
@@ -69,9 +67,26 @@ RETRACE_REPLACE(putc)
 int
 RETRACE_IMPLEMENTATION(_IO_putc)(int c, FILE *stream)
 {
-	trace_putc("__IO_putc", c, stream);
 
-	return (RETRACE_GET_REAL(_IO_putc)(c, stream));
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&c, &stream};
+	int r = 0;
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "_IO_putc";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
+	r = RETRACE_GET_REAL(_IO_putc)(c, stream);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (r);
 }
 
 RETRACE_REPLACE(_IO_putc)
@@ -80,9 +95,26 @@ RETRACE_REPLACE(_IO_putc)
 int
 RETRACE_IMPLEMENTATION(toupper)(int c)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&c};
 	rtr_toupper_t real_toupper = RETRACE_GET_REAL(toupper);
-	trace_printf(1, "toupper('%c');\n", c);
-	return (real_toupper(c));
+	int r;
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "toupper";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
+	r = real_toupper(c);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (r);
 }
 
 RETRACE_REPLACE(toupper)
@@ -90,9 +122,27 @@ RETRACE_REPLACE(toupper)
 int
 RETRACE_IMPLEMENTATION(tolower)(int c)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&c};
 	rtr_tolower_t real_tolower = RETRACE_GET_REAL(tolower);
-	trace_printf(1, "tolower('%c');\n", c);
-	return (real_tolower(c));
+	int r;
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "tolower";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
+	r = real_tolower(c);
+
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
+	return (r);
 }
 
 RETRACE_REPLACE(tolower)

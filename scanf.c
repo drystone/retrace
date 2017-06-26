@@ -33,44 +33,36 @@
 
 #define __func__ __extension__ __FUNCTION__
 
-static void
-trace(const char *func, bool showfd, int fd, int result, const char *str, const char *fmt, va_list ap)
-{
-	char buf[1024];
-
-	if (str == NULL) {
-		rtr_vsnprintf_t vsnprintf_;
-
-		vsnprintf_ = RETRACE_GET_REAL(vsnprintf);
-		vsnprintf_(buf, 1024, fmt, ap);
-		str = buf;
-	}
-
-	trace_printf(1, "%s(\"", func);
-	trace_printf_str(fmt);
-	trace_printf(0, "\" > \"");
-	trace_printf_str(str);
-	if (showfd)
-		trace_printf(0, "\")[fd=%d][%d]\n", fd, result);
-	else
-		trace_printf(0, "\")[%d]\n", result);
-}
-
 int
 RETRACE_IMPLEMENTATION(scanf)(const char *format, ...)
 {
 	rtr_vscanf_t real_vscanf;
 	va_list ap;
 	int result;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&format, &ap};
 
 	real_vscanf = RETRACE_GET_REAL(vscanf);
+
+	va_start(ap, format);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "scanf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, format);
 	result = real_vscanf(format, ap);
 	va_end(ap);
 
 	va_start(ap, format);
-	trace(__func__, false, 0, result, NULL, format, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
 	va_end(ap);
 
 	return result;
@@ -82,20 +74,33 @@ int
 RETRACE_IMPLEMENTATION(fscanf)(FILE *stream, const char *format, ...)
 {
 	rtr_vfscanf_t real_vfscanf;
-	rtr_fileno_t fileno_;
 	va_list ap;
 	int result;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&stream, &format, &ap};
 
 	real_vfscanf = RETRACE_GET_REAL(vfscanf);
-	fileno_ = RETRACE_GET_REAL(fileno);
+
+	va_start(ap, format);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "fscanf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, format);
 	result = real_vfscanf(stream, format, ap);
 	va_end(ap);
 
 	va_start(ap, format);
-	trace(__func__, true, fileno_(stream), result, NULL, format, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap);
+
 
 	return result;
 }
@@ -108,15 +113,29 @@ RETRACE_IMPLEMENTATION(sscanf)(const char *str, const char *format, ...)
 	rtr_vsscanf_t real_vsscanf;
 	va_list ap;
 	int result;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&str, &format, &ap};
 
 	real_vsscanf = RETRACE_GET_REAL(vsscanf);
+
+	va_start(ap, format);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "sscanf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, format);
 	result = real_vsscanf(str, format, ap);
 	va_end(ap);
 
 	va_start(ap, format);
-	trace(__func__, false, 0, result, NULL, format, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap);
 
 	return result;
@@ -130,12 +149,29 @@ RETRACE_IMPLEMENTATION(vscanf)(const char *format, va_list ap)
 	rtr_vscanf_t real_vscanf;
 	va_list ap1;
 	int result;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&format, &ap1};
 
 	real_vscanf = RETRACE_GET_REAL(vscanf);
 
 	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vscanf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
 	result = real_vscanf(format, ap);
-	trace(__func__, false, 0, result, NULL, format, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap1);
 
 	return result;
@@ -149,12 +185,29 @@ RETRACE_IMPLEMENTATION(vsscanf)(const char *str, const char *format, va_list ap)
 	rtr_vsscanf_t real_vsscanf;
 	va_list ap1;
 	int result;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&str, &format, &ap1};
 
 	real_vsscanf = RETRACE_GET_REAL(vsscanf);
 
 	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vsscanf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
 	result = real_vsscanf(str, format, ap);
-	trace(__func__, false, 0, result, str, format, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap1);
 
 	return result;
@@ -166,16 +219,31 @@ int
 RETRACE_IMPLEMENTATION(vfscanf)(FILE *stream, const char *format, va_list ap)
 {
 	rtr_vfscanf_t real_vfscanf;
-	rtr_fileno_t fileno_;
 	va_list ap1;
 	int result;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&stream, &format, &ap1};
 
 	real_vfscanf = RETRACE_GET_REAL(vfscanf);
-	fileno_ = RETRACE_GET_REAL(fileno);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vfscanf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
 
 	__va_copy(ap1, ap);
 	result = real_vfscanf(stream, format, ap);
-	trace(__func__, true, fileno_(stream), result, NULL, format, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap1);
 
 	return result;

@@ -28,14 +28,26 @@
 
 char *RETRACE_IMPLEMENTATION(ctime_r)(const time_t *timep, char *buf)
 {
-	char *r;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&timep, &buf};
+	char *r = NULL;
 	rtr_ctime_r_t real_ctime_r;
 
 	real_ctime_r = RETRACE_GET_REAL(ctime_r);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "ctime_r";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_STRING;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
 	r = real_ctime_r(timep, buf);
 
-	trace_printf(1, "ctime_r(\"%u\", \"%s\");\n", timep ? timep : 0, buf);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return r;
 }
@@ -44,14 +56,26 @@ RETRACE_REPLACE(ctime_r)
 
 char *RETRACE_IMPLEMENTATION(ctime)(const time_t *timep)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&timep};
 	char *r;
 	rtr_ctime_t real_ctime;
 
 	real_ctime = RETRACE_GET_REAL(ctime);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "ctime";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
 	r = real_ctime(timep);
 
-	trace_printf(1, "ctime(\"%u\") [return: %s];\n", timep ? timep : 0, r);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return r;
 }
@@ -64,6 +88,9 @@ int RETRACE_IMPLEMENTATION(gettimeofday)(struct timeval *tv, void *tzp)
 int RETRACE_IMPLEMENTATION(gettimeofday)(struct timeval *tv, struct timezone *tz)
 #endif
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_TIMEVAL, PARAMETER_TYPE_TIMEZONE, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&tv, &tz};
 	int ret;
 	rtr_gettimeofday_t real_gettimeofday;
 #if defined(__APPLE__) || defined(__NetBSD__)
@@ -74,25 +101,18 @@ int RETRACE_IMPLEMENTATION(gettimeofday)(struct timeval *tv, struct timezone *tz
 
 	real_gettimeofday = RETRACE_GET_REAL(gettimeofday);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "gettimeofday";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &ret;
+	retrace_event (&event_info);
+
 	ret = real_gettimeofday(tv, tz);
-	if (ret == 0) {
-		int tz_minuteswest = 0;
-		int tz_dsttime = 0;
-		time_t tv_sec;
-		suseconds_t tv_usec;
 
-		tv_sec	= tv->tv_sec;
-		tv_usec	= tv->tv_usec;
-
-		if (tz != NULL) {
-			tz_minuteswest	= tz->tz_minuteswest;
-			tz_dsttime	= tz->tz_dsttime;
-		}
-
-		trace_printf(1, "gettimeofday(timeval:[%ld, %ld], timezone:[%d, %d]);\n",
-				tv_sec, tv_usec, tz_minuteswest, tz_dsttime);
-	} else
-		trace_printf(1, "gettimeofday(); -1\n");
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return ret;
 }

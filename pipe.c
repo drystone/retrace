@@ -30,14 +30,26 @@
 
 int RETRACE_IMPLEMENTATION(pipe)(int pipefd[2])
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_FILE_DESCRIPTOR,  PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&pipefd[0], &pipefd[1]};
 	int ret;
 	rtr_pipe_t real_pipe;
 
 	real_pipe = RETRACE_GET_REAL(pipe);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "pipe";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &ret;
+	retrace_event (&event_info);
+
 	ret = real_pipe(pipefd);
 
-	trace_printf(1, "pipe(%p); [%d]\n", (void *)pipefd, ret);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return ret;
 }
@@ -48,14 +60,26 @@ RETRACE_REPLACE(pipe)
 
 int RETRACE_IMPLEMENTATION(pipe2)(int pipefd[2], int flags)
 {
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&pipefd[0], &pipefd[1], &flags};
 	int ret;
 	rtr_pipe2_t real_pipe2;
 
 	real_pipe2 = RETRACE_GET_REAL(pipe2);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "pipe2";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &ret;
+	retrace_event (&event_info);
+
 	ret = real_pipe2(pipefd, flags);
 
-	trace_printf(1, "pipe2(%p, %d); [%d]\n", (void *)pipefd, flags, ret);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return ret;
 }

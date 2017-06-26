@@ -28,23 +28,33 @@
 
 ssize_t RETRACE_IMPLEMENTATION(read)(int fd, void *buf, size_t nbytes)
 {
-	ssize_t ret;
+	ssize_t ret = 0;
 	struct descriptor_info *di;
 	rtr_read_t real_read;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&fd, &ret, &buf, &nbytes};
+
 
 	real_read = RETRACE_GET_REAL(read);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "read";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &ret;
+	retrace_event (&event_info);
+
 	ret = real_read(fd, buf, nbytes);
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	di = file_descriptor_get(fd);
 
 	if (di && di->location)
-		trace_printf(1, "read(%d, %p, %d); [to \"%s\", return: %d]\n", fd, buf, nbytes, di->location, ret);
-	else
-		trace_printf(1, "read(%d, %p, %d); [return: %d]\n", fd, buf, nbytes, ret);
-
-	if (ret > 0)
-		trace_dump_data(buf, ret);
+		trace_printf(0, "\t[to \"%s\"]\n",di->location);
 
 	return ret;
 }

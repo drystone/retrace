@@ -23,31 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "common.h"
-#include "fork.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 
-pid_t RETRACE_IMPLEMENTATION(fork)(void)
+int main(void)
 {
-	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
-	pid_t p;
-	rtr_fork_t real_fork;
+	errno = EADDRINUSE;
 
-	real_fork = RETRACE_GET_REAL(fork);
+	perror ("retrace");
 
-	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
-	event_info.function_name = "fork";
-	event_info.parameter_types = parameter_types;
-	event_info.return_value_type = PARAMETER_TYPE_INT;
-	event_info.return_value = &p;
-	retrace_event (&event_info);
-
-	p = real_fork();
-
-	event_info.event_type = EVENT_TYPE_AFTER_CALL;
-	retrace_event (&event_info);
-
-	return p;
+	return 0;
 }
-
-RETRACE_REPLACE(fork)

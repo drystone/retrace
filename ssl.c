@@ -45,9 +45,11 @@ print_key(const unsigned char *buf, int len)
 	}
 }
 
-static void
-print_ssl_keys(SSL *ssl)
+void
+print_ssl_keys(void *_ssl)
 {
+	SSL *ssl = (SSL *) _ssl;
+
 	SSL_SESSION *session = NULL;
 	size_t master_key_length = 0;
 	size_t client_random_length = 0;
@@ -107,13 +109,24 @@ int RETRACE_IMPLEMENTATION(SSL_write)(SSL *ssl, const void *buf, int num)
 {
 	rtr_SSL_write_t real_SSL_write;
 	int r;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&ssl, &num, &buf, &num};
 
 	real_SSL_write = RETRACE_GET_REAL(SSL_write);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "SSL_write";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
 	r = real_SSL_write(ssl, buf, num);
 
-	trace_printf(1, "SSL_write(%p, %p, %d); [return: %d]\n", ssl, buf, num, r);
-	trace_dump_data(buf, num);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return (r);
 }
@@ -124,15 +137,24 @@ int RETRACE_IMPLEMENTATION(SSL_read)(SSL *ssl, void *buf, int num)
 {
 	rtr_SSL_read_t real_SSL_read;
 	int r;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&ssl, &r, &buf, &num};
 
 	real_SSL_read = RETRACE_GET_REAL(SSL_read);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "SSL_read";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
 	r = real_SSL_read(ssl, buf, num);
 
-	trace_printf(1, "SSL_read(%p, %p, %d); [return: %d]\n", ssl, buf, num, r);
-
-	if (r > 0)
-		trace_dump_data(buf, r);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return (r);
 }
@@ -143,13 +165,24 @@ int RETRACE_IMPLEMENTATION(SSL_connect)(SSL *ssl)
 {
 	rtr_SSL_connect_t real_SSL_connect;
 	int r;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL_WITH_KEY, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&ssl};
 
 	real_SSL_connect = RETRACE_GET_REAL(SSL_connect);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "SSL_connect";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
 	r = real_SSL_connect(ssl);
 
-	trace_printf(1, "SSL_connect(%p); [return: %d]\n", ssl, r);
-	print_ssl_keys (ssl);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return (r);
 }
@@ -161,13 +194,24 @@ int RETRACE_IMPLEMENTATION(SSL_accept)(SSL *ssl)
 {
 	rtr_SSL_accept_t real_SSL_accept;
 	int r;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL_WITH_KEY, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&ssl};
 
 	real_SSL_accept = RETRACE_GET_REAL(SSL_accept);
 
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "SSL_accept";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
 	r = real_SSL_accept(ssl);
 
-	trace_printf(1, "SSL_accept(%p); [return: %d]\n", ssl, r);
-	print_ssl_keys(ssl);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return (r);
 }
@@ -180,8 +224,19 @@ RETRACE_IMPLEMENTATION(SSL_get_verify_result)(const SSL *ssl)
 	rtr_SSL_get_verify_result_t real_SSL_get_verify_result;
 	int r;
 	int redirect_id = 0;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&ssl};
 
 	real_SSL_get_verify_result = RETRACE_GET_REAL(SSL_get_verify_result);
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "SSL_get_verify_result";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
 
 	if (rtr_get_config_single("SSL_get_verify_result", ARGUMENT_TYPE_INT, ARGUMENT_TYPE_END, &redirect_id)) {
 
@@ -194,7 +249,8 @@ RETRACE_IMPLEMENTATION(SSL_get_verify_result)(const SSL *ssl)
 
 	r = real_SSL_get_verify_result(ssl);
 
-	trace_printf(1, "SSL_get_verify_result(%p); [return: %d]\n", ssl, r);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return r;
 }
@@ -209,10 +265,17 @@ long RETRACE_IMPLEMENTATION(BIO_ctrl)(BIO *bp, int cmd, long larg, void *parg)
 	long r;
 	SSL *ssl = NULL;
 	char *cmd_str;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER,
+					  PARAMETER_TYPE_INT | PARAMETER_FLAG_STRING_NEXT,
+					  PARAMETER_TYPE_INT,
+					  PARAMETER_TYPE_POINTER,
+					  PARAMETER_TYPE_END,   /* index 4 see below in case this changes*/
+					  PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&bp, &cmd, &cmd_str, &larg, &parg, &ssl};
+
 
 	real_BIO_ctrl = RETRACE_GET_REAL(BIO_ctrl);
-
-	r = real_BIO_ctrl(bp, cmd, larg, parg);
 
 	switch (cmd) {
 #ifdef BIO_CTRL_RESET
@@ -523,7 +586,15 @@ long RETRACE_IMPLEMENTATION(BIO_ctrl)(BIO *bp, int cmd, long larg, void *parg)
 		cmd_str = "UNKNOWN";
 	}
 
-	trace_printf(1, "BIO_ctrl(%p, \"%s\"(%d), %ld, %p); [return: %d]\n", bp, cmd_str, cmd, larg, parg, r);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "BIO_ctrl";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
+	r = real_BIO_ctrl(bp, cmd, larg, parg);
 
 	if (cmd == BIO_C_DO_STATE_MACHINE) {
 		if (get_tracing_enabled()) {
@@ -532,11 +603,15 @@ long RETRACE_IMPLEMENTATION(BIO_ctrl)(BIO *bp, int cmd, long larg, void *parg)
 			old_trace_state = trace_disable();
 			BIO_get_ssl(bp, &ssl);
 			trace_restore(old_trace_state);
-		}
 
-		if (ssl)
-			print_ssl_keys(ssl);
+			if (ssl != NULL)
+				parameter_types[4] = PARAMETER_TYPE_SSL_WITH_KEY;
+		}
 	}
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+
 
 	return (r);
 }

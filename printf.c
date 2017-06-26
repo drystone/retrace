@@ -30,48 +30,36 @@
 #include "printf.h"
 #include "file.h"
 
-#define __func__ __extension__ __FUNCTION__
-
-static void
-trace(const char *func, bool showfd, int fd, int result,
-	const char *str, const char *fmt, va_list ap)
-{
-	char buf[1024];
-
-	if (str == NULL) {
-		rtr_vsnprintf_t vsnprintf_;
-
-		vsnprintf_ = RETRACE_GET_REAL(vsnprintf);
-
-		vsnprintf_(buf, 1024, fmt, ap);
-		str = buf;
-	}
-
-	trace_printf(1, "%s(\"", func);
-	trace_printf_str(fmt);
-	trace_printf(0, "\" > \"");
-	trace_printf_str(str);
-	if (showfd)
-		trace_printf(0, "\")[fd=%d][%d]\n", fd, result);
-	else
-		trace_printf(0, "\")[%d]\n", result);
-}
-
 int
 RETRACE_IMPLEMENTATION(printf)(const char *fmt, ...)
 {
 	int result;
 	rtr_vprintf_t vprintf_;
 	va_list ap;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&fmt, &ap};
 
 	vprintf_ = RETRACE_GET_REAL(vprintf);
+
+	va_start(ap, fmt);
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "printf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, fmt);
 	result = vprintf_(fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
-	trace(__func__, false, 0, result, NULL, fmt, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap);
 
 	return result;
@@ -84,18 +72,30 @@ RETRACE_IMPLEMENTATION(fprintf)(FILE *stream, const char *fmt, ...)
 {
 	int result;
 	rtr_vfprintf_t vfprintf_;
-	rtr_fileno_t fileno_;
 	va_list ap;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&stream, &fmt, &ap};
 
 	vfprintf_	= RETRACE_GET_REAL(vfprintf);
-	fileno_		= RETRACE_GET_REAL(fileno);
+
+	va_start(ap, fmt);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "fprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, fmt);
 	result = vfprintf_(stream, fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
-	trace(__func__, true, fileno_(stream), result, NULL, fmt, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap);
 
 	return result;
@@ -109,15 +109,29 @@ RETRACE_IMPLEMENTATION(dprintf)(int fd, const char *fmt, ...)
 	int result;
 	rtr_vdprintf_t vdprintf_;
 	va_list ap;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&fd, &fmt, &ap};
 
 	vdprintf_ = RETRACE_GET_REAL(vdprintf);
+
+	va_start(ap, fmt);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "dprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, fmt);
 	result = vdprintf_(fd, fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
-	trace(__func__, true, fd, result, NULL, fmt, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap);
 
 	return result;
@@ -131,15 +145,29 @@ RETRACE_IMPLEMENTATION(sprintf)(char *str, const char *fmt, ...)
 	int result;
 	rtr_vsprintf_t vsprintf_;
 	va_list ap;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&str, &fmt, &ap};
 
 	vsprintf_ = RETRACE_GET_REAL(vsprintf);
+
+	va_start(ap, fmt);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "sprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, fmt);
 	result = vsprintf_(str, fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
-	trace(__func__, false, 0, result, NULL, fmt, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap);
 
 	return result;
@@ -153,14 +181,30 @@ RETRACE_IMPLEMENTATION(snprintf)(char *str, size_t size, const char *fmt, ...)
 	int result;
 	rtr_vsnprintf_t vsnprintf_;
 	va_list ap;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&str, &size, &fmt, &ap};
 
 	vsnprintf_ = RETRACE_GET_REAL(vsnprintf);
+
+	va_start(ap, fmt);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "snprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	va_start(ap, fmt);
 	result = vsnprintf_(str, size, fmt, ap);
 	va_end(ap);
 
-	trace(__func__, false, 0, result, str, fmt, ap);
+	va_start(ap, fmt);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+	va_end(ap);
 
 	return result;
 }
@@ -173,12 +217,29 @@ RETRACE_IMPLEMENTATION(vprintf)(const char *fmt, va_list ap)
 	int result;
 	rtr_vprintf_t vprintf_;
 	va_list ap1;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&fmt, &ap1};
 
 	vprintf_ = RETRACE_GET_REAL(vprintf);
 
 	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
 	result = vprintf_(fmt, ap);
-	trace(__func__, false, 0, result, NULL, fmt, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap1);
 
 	return result;
@@ -191,15 +252,30 @@ RETRACE_IMPLEMENTATION(vfprintf)(FILE *stream, const char *fmt, va_list ap)
 {
 	int result;
 	rtr_vfprintf_t vfprintf_;
-	rtr_fileno_t fileno_;
 	va_list ap1;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&stream, &fmt, &ap1};
 
 	vfprintf_	= RETRACE_GET_REAL(vfprintf);
-	fileno_		= RETRACE_GET_REAL(fileno);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vfprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
 
 	__va_copy(ap1, ap);
 	result = vfprintf_(stream, fmt, ap);
-	trace(__func__, true, fileno_(stream), result, NULL, fmt, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap1);
 
 	return result;
@@ -213,12 +289,29 @@ RETRACE_IMPLEMENTATION(vdprintf)(int fd, const char *fmt, va_list ap)
 	int result;
 	rtr_vdprintf_t vdprintf_;
 	va_list ap1;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&fd, &fmt, &ap1};
 
 	vdprintf_ = RETRACE_GET_REAL(vdprintf);
 
 	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vdprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
 	result = vdprintf_(fd, fmt, ap);
-	trace(__func__, true, fd, result, NULL, fmt, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap1);
 
 	return result;
@@ -232,12 +325,29 @@ RETRACE_IMPLEMENTATION(vsprintf)(char *str, const char *fmt, va_list ap)
 	int result;
 	rtr_vsprintf_t vsprintf_;
 	va_list ap1;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&str, &fmt, &ap1};
 
 	vsprintf_ = RETRACE_GET_REAL(vsprintf);
 
 	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vsprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
 	result = vsprintf_(str, fmt, ap);
-	trace(__func__, false, 0, result, NULL, fmt, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 	va_end(ap1);
 
 	return result;
@@ -250,12 +360,31 @@ RETRACE_IMPLEMENTATION(vsnprintf)(char *str, size_t size, const char *fmt, va_li
 {
 	int result;
 	rtr_vsnprintf_t vsnprintf_;
+	va_list ap1;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&str, &size, &fmt, &ap1};
 
 	vsnprintf_ = RETRACE_GET_REAL(vsnprintf);
 
-	result = vsnprintf_(str, size, fmt, ap);
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "vsnprintf";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &result;
+	retrace_event (&event_info);
+	va_end(ap1);
 
-	trace(__func__, false, 0, result, str, fmt, ap);
+	__va_copy(ap1, ap);
+	result = vsnprintf_(str, size, fmt, ap1);
+	va_end(ap1);
+
+	__va_copy(ap1, ap);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
+	va_end(ap1);
 
 	return result;
 }
