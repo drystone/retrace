@@ -64,22 +64,44 @@
 #define PARAMETER_FLAG_STRING_NEXT		0x80000000 /* There's a string parameter that describes the string */
 #define PARAMETER_FLAGS_ALL (PARAMETER_FLAG_STRING_NEXT | PARAMETER_FLAG_OUTPUT_VARIABLE)
 
-#define EVENT_TYPE_BEFORE_CALL		0
-#define EVENT_TYPE_AFTER_CALL		1
+enum rtr_event_type {
+	EVENT_TYPE_BEFORE_CALL,
+	EVENT_TYPE_AFTER_CALL
+};
 
 #define GET_PARAMETER_TYPE(param) (param & ~PARAMETER_FLAGS_ALL)
 #define GET_PARAMETER_FLAGS(param) (param & PARAMETER_FLAGS_ALL)
 
+union rtr_parameter_value {
+	int intval;
+	void *pvoid;
+	unsigned int uintval;
+	float floatval;
+	double doubleval;
+	const char *pchar;
+	DIR *dirp;
+	FILE *stream;
+	char **ppstr;
+	struct utsname *putsname;
+	struct timeval *ptv;
+	struct timezone *ptz;
+	struct SSL *pssl;
+	int charval;
+	int fd;
+	va_list *pva_list;
+	size_t size_tval; 
+	unsigned char *puchar;
+	struct iovec *piovec;
+};
+
 struct rtr_event_info {
-	unsigned int event_type;
+	const char *function_name;
 
-	char *function_name;
-
-	unsigned int *parameter_types;
-	void ** parameter_values;
+	const unsigned int *parameter_types;
+	const union rtr_parameter_value *parameters;
 
 	unsigned int return_value_type;
-	void *return_value;
+	union rtr_parameter_value return_value;
 };
 
 #define RETRACE_DECL(func) extern rtr_##func##_t real_##func
@@ -157,7 +179,7 @@ struct descriptor_info {
 	int port;
 };
 
-void retrace_event (struct rtr_event_info *event_info);
+void retrace_event (enum rtr_event_type type, const struct rtr_event_info *event_info);
 
 void trace_printf(int hdr, const char *fmt, ...);
 void trace_printf_str(const char *string);

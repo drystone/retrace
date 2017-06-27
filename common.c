@@ -101,115 +101,87 @@ static pthread_once_t tracing_key_once = PTHREAD_ONCE_INIT;
 struct descriptor_info **g_descriptor_list;
 unsigned int g_descriptor_list_size;
 
-void **
-retrace_print_parameter(unsigned int event_type, unsigned int type, int flags, void **value)
+const union rtr_parameter_value *
+retrace_print_parameter(enum rtr_event_type event_type, unsigned int type, int flags, const union rtr_parameter_value *param)
 {
 	switch (type) {
 	case PARAMETER_TYPE_INT:
-		trace_printf(0, "%d", (*(int *) *value));
+		trace_printf(0, "%d", param->intval);
 		break;
 	case PARAMETER_TYPE_POINTER:
-		trace_printf(0, "%p", (*(void **) *value));
+		trace_printf(0, "%p", param->pvoid);
 		break;
 	case PARAMETER_TYPE_UINT:
-		trace_printf(0, "%u", *((unsigned int *) *value));
+		trace_printf(0, "%u", param->uintval);
 		break;
 	case PARAMETER_TYPE_FLOAT:
-		trace_printf(0, "%f", *((float *) *value));
+		trace_printf(0, "%f", param->floatval);
 		break;
 	case PARAMETER_TYPE_DOUBLE:
-		trace_printf(0, "%f", *((double *) *value));
+		trace_printf(0, "%f", param->doubleval);
 		break;
 	case PARAMETER_TYPE_STRING:
-
-		if (event_type == EVENT_TYPE_BEFORE_CALL && flags & PARAMETER_FLAG_OUTPUT_VARIABLE) {
-			trace_printf(0, "%p", (*(void **) *value));
-		} else {
-			if ((*(char **) *value) != NULL)
-				trace_printf_str ((*(char **) *value));
-			else
-				trace_printf_str ("(nil)");
-		}
+		if (event_type == EVENT_TYPE_BEFORE_CALL && flags & PARAMETER_FLAG_OUTPUT_VARIABLE)
+			trace_printf(0, "%p", param->pchar);
+		else
+			trace_printf_str(*param->pchar ? param->pchar : "(nil)");
 		break;
 	case PARAMETER_TYPE_STRING_LEN:
-		trace_printf_str ((*(char **) *value));
+		trace_printf_str(param->pchar);
 		break;
 	case PARAMETER_TYPE_MEMORY_BUFFER:
-		value++;
-
-		trace_printf(0, "%p", (*(void **) *value));
+		trace_printf(0, "%p", (++param)->pvoid);
 		break;
 	case PARAMETER_TYPE_MEM_BUFFER_ARRAY:
-		value += 2;
-		trace_printf(0, "%p", (*(void **) *value));
+		param += 2;
+		trace_printf(0, "%p", param->pvoid);
 		break;
 	case PARAMETER_TYPE_CHAR:
-		trace_printf(0, "'%c'(%d)", (*(char **) *value), *((int *) *value));
+		trace_printf(0, "'%c'(%d)", param->charval, param->charval);
 		break;
 	case PARAMETER_TYPE_DIR:
-	{
-		int fd = -1;
-		DIR *dirp;
-
-		dirp = *((DIR **) *value);
-
-		if (dirp)
-			fd = real_dirfd(dirp);
-
-		trace_printf(0, "%p (fd %d)", dirfd, fd);
+		trace_printf(0, "%p (fd %d)", param->dirp,
+		    param->dirp ? real_dirfd(param->dirp) : -1);
 		break;
-	}
 	case PARAMETER_TYPE_FILE_STREAM:
 	{
-		int fd = -1;
-		FILE *stream;
-		struct descriptor_info *di;
+		int fd;
 
-		stream = *((FILE **) *value);
+		fd = param->stream ? real_fileno(param->stream) : -1;
 
-		if (stream)
-			fd = real_fileno(stream);
+		trace_printf(0, "%p [fd %d]", param->stream, fd);
 
-		trace_printf(0, "%p [fd %d]", stream, fd);
+		if (fd >= 0) {
+			struct descriptor_info *di;
 
-		if (fd > 0) {
 			di = file_descriptor_get(fd);
-			if (di && di->location) {
+			if (di && di->location)
 				trace_printf(0, " [%s]", di->location);
-			}
 		}
-
 		break;
 	}
 	case PARAMETER_TYPE_FILE_DESCRIPTOR:
-	{
-		int fd = *((int *) *value);
-		struct descriptor_info *di;
-
-		trace_printf(0, "%d", fd);
+		trace_printf(0, "%d", param->fd);
 
 		if (event_type != EVENT_TYPE_BEFORE_CALL || (flags & PARAMETER_FLAG_OUTPUT_VARIABLE)) {
-			di = file_descriptor_get(fd);
-			if (di && di->location) {
+			struct descriptor_info *di;
+
+			di = file_descriptor_get(param->fd);
+			if (di && di->location)
 				trace_printf(0, " [%s]", di->location);
-			}
 		}
-
-
 		break;
-	}
 	case PARAMETER_TYPE_INT_OCTAL:
-		trace_printf(0, "%o", *((int *) *value));
+		trace_printf(0, "%o", param->intval);
 		break;
 	case PARAMETER_TYPE_PRINTF_FORMAT:
 	{
-		char *fmt;
+		const char *fmt;
 		va_list *ap;
 	        char buf[1024];
 
-		fmt = *((char **) *value);
-		value++;
-		ap = (va_list *) *value;
+		fmt = param->pchar;
+		ap = (++param)->pva_list;
 
 		real_vsnprintf(buf, 1024, fmt, *ap);
 		trace_printf(0, "\"");
@@ -224,99 +196,64 @@ retrace_print_parameter(unsigned int event_type, unsigned int type, int flags, v
 	{
 		char **argv;
 
-		argv = *((char ***) *value);
-
-		while (*argv) {
+		for (argv = param->ppstr; *argv; ++argv) {
 			trace_printf_str(*argv);
 			trace_printf(0, ", ");
-
-			argv++;
 		}
 		trace_printf(0, "NULL");
 		break;
 
 	}
 	case PARAMETER_TYPE_IOVEC:
-	{
-		value++;
+		param++;
 		break;
-	}
 	case PARAMETER_TYPE_UTSNAME:
-	{
-		struct utsname *buf;
-
-		buf = *((struct utsname **) *value);
-
-		trace_printf(0, "%p [%s, %s, %s, %s, %s]", buf, buf->sysname, buf->nodename,
-                                buf->release, buf->version, buf->machine);
+		trace_printf(0, "%p [%s, %s, %s, %s, %s]", param->putsname,
+		    param->putsname->sysname, param->putsname->nodename,
+                    param->putsname->release, param->putsname->version,
+		    param->putsname->machine);
 		break;
-
-	}
 	case PARAMETER_TYPE_TIMEVAL:
-	{
-		struct timeval *tv;
-		time_t tv_sec;
-		suseconds_t tv_usec;
-
-		tv = *((struct timeval **) *value);
-
-		trace_printf(1, "%p", tv);
-
-		if (tv) {
-			tv_sec  = tv->tv_sec;
-			tv_usec = tv->tv_usec;
-
-			trace_printf(1, "[%ld, %ld]", tv_sec, tv_usec);
-		}
+		trace_printf(1, "%p", param->ptv);
+		if (param->ptv)
+			trace_printf(1, "[%ld, %ld]", param->ptv->tv_sec,
+			    param->ptv->tv_usec);
 		break;
-	}
 	case PARAMETER_TYPE_TIMEZONE:
-	{
-		struct timezone *tz;
-		int tz_minuteswest = 0;
-		int tz_dsttime = 0;
-
-		tz = *((struct timezone **) *value);
-
-		trace_printf(0, "%p", tz);
-		if (tz != NULL) {
-			tz_minuteswest	= tz->tz_minuteswest;
-			tz_dsttime	= tz->tz_dsttime;
-
-			trace_printf(0, "[%d, %d]", tz_minuteswest, tz_dsttime);
-		}
-
+		trace_printf(0, "%p", param->ptz);
+		if (param->ptz != NULL)
+			trace_printf(0, "[%d, %d]",
+			    param->ptz->tz_minuteswest, param->ptz->tz_dsttime);
 		break;
-	}
 	case PARAMETER_TYPE_SSL:
 	case PARAMETER_TYPE_SSL_WITH_KEY:
-		trace_printf(0, "%p", (*(void **) *value));
+		trace_printf(0, "%p", param->pssl);
 		break;
 	}
 
 	/* There's a string following this parameter that expands its meaning */
-	if ((flags & PARAMETER_FLAG_STRING_NEXT) == PARAMETER_FLAG_STRING_NEXT) {
-		value++;
-		trace_printf(0, " [%s]", (*(char **) *value));
-	}
+	if ((flags & PARAMETER_FLAG_STRING_NEXT) == PARAMETER_FLAG_STRING_NEXT)
+		trace_printf(0, " [%s]", (++param)->pchar);
 
-	return value + 1;
+	return (++param);
 }
 
 void
-retrace_event (struct rtr_event_info *event_info)
+retrace_event (enum rtr_event_type event_type,
+	const struct rtr_event_info *event_info)
 {
-	if (event_info->event_type == EVENT_TYPE_AFTER_CALL || event_info->event_type == EVENT_TYPE_BEFORE_CALL) {
-		unsigned int *parameter_type;
-		void **parameter_value;
+	if (event_type == EVENT_TYPE_AFTER_CALL
+	    || event_type == EVENT_TYPE_BEFORE_CALL) {
+		const unsigned int *parameter_type;
+		const union rtr_parameter_value *parameter_value;
 		int has_memory_buffers = 0;
 
 		parameter_type = event_info->parameter_types;
-		parameter_value = event_info->parameter_values;
+		parameter_value = event_info->parameters;
 
-		if (event_info->event_type == EVENT_TYPE_BEFORE_CALL)
+		if (event_type == EVENT_TYPE_BEFORE_CALL)
 			trace_printf(1, "->: ", event_info->function_name);
-		else if (event_info->event_type == EVENT_TYPE_AFTER_CALL)
+		else if (event_type == EVENT_TYPE_AFTER_CALL)
 			trace_printf(1, "<-: ", event_info->function_name);
 
 		trace_printf(0, "%s(", event_info->function_name);
@@ -329,10 +266,11 @@ retrace_event (struct rtr_event_info *event_info)
 			    GET_PARAMETER_TYPE(*parameter_type) == PARAMETER_TYPE_SSL_WITH_KEY)
 				has_memory_buffers = 1;
 
-			parameter_value = retrace_print_parameter (event_info->event_type,
-								   GET_PARAMETER_TYPE(*parameter_type),
-								   GET_PARAMETER_FLAGS(*parameter_type),
-								   parameter_value);
+			parameter_value = retrace_print_parameter(
+			    event_type,
+			    GET_PARAMETER_TYPE(*parameter_type),
+			    GET_PARAMETER_FLAGS(*parameter_type),
+			    parameter_value);
 			trace_printf(0, ", ");
 
 			parameter_type++;
@@ -341,56 +279,52 @@ retrace_event (struct rtr_event_info *event_info)
 		trace_printf(0, ")");
 
 		/* Return value is only valid in EVENT_TYPE_AFTER_CALL */
-		if (event_info->event_type == EVENT_TYPE_AFTER_CALL && event_info->return_value_type != PARAMETER_TYPE_END) {
+		if (event_type == EVENT_TYPE_AFTER_CALL && event_info->return_value_type != PARAMETER_TYPE_END) {
 			trace_printf(0, " = ");
-			retrace_print_parameter (event_info->event_type,
-						 GET_PARAMETER_TYPE(event_info->return_value_type),
-						 GET_PARAMETER_FLAGS(event_info->return_value_type),
-						 &event_info->return_value);
+			retrace_print_parameter (event_type,
+			     GET_PARAMETER_TYPE(event_info->return_value_type),
+			     GET_PARAMETER_FLAGS(event_info->return_value_type),
+			     &event_info->return_value);
 		}
 
 		trace_printf(0, "\n");
 
 		/* Give another pass to dump memory buffers in case we have any */
-		if (has_memory_buffers && event_info->event_type == EVENT_TYPE_AFTER_CALL) {
+		if (has_memory_buffers && event_type == EVENT_TYPE_AFTER_CALL) {
 			parameter_type = event_info->parameter_types;
-			parameter_value = event_info->parameter_values;
+			parameter_value = event_info->parameters;
 
 			while (GET_PARAMETER_TYPE(*parameter_type) != PARAMETER_TYPE_END) {
 
 				if (GET_PARAMETER_TYPE(*parameter_type) == PARAMETER_TYPE_MEMORY_BUFFER) {
-					int size;
+					size_t size;
 
-					size = *((int *) *parameter_value);
+					size = parameter_value->size_tval;
 					parameter_value++;
 
-					if (size > 0) {
-						trace_dump_data((*(unsigned char **) *parameter_value), size);
-					}
+					if (size > 0)
+						trace_dump_data(parameter_value->puchar, size);
 
 				} else if (GET_PARAMETER_TYPE(*parameter_type) == PARAMETER_TYPE_MEM_BUFFER_ARRAY) {
-					int size;
+					size_t size;
 					int nmemb;
 					int i;
 					void *data;
 
-					size = *((int *) *parameter_value);
-					parameter_value++;
-					nmemb = *((int *) *parameter_value);
-					parameter_value++;
-					data = *((void **) (*parameter_value));
+					size = parameter_value->size_tval;
+					nmemb = (++parameter_value)->intval;
+					data = (++parameter_value)->pvoid;
 
 					if (size > 0)
 						for (i = 0; i < nmemb; i++)
 							trace_dump_data(data + i, size);
 				} else if (GET_PARAMETER_TYPE(*parameter_type) == PARAMETER_TYPE_IOVEC) {
 					int i;
-					int size;
+					size_t size;
 					struct iovec *iov;
 
-					size = *((size_t *) *parameter_value);
-					parameter_value++;
-					iov = *((struct iovec **) *parameter_value);
+					size = parameter_value->size_tval;
+					iov = (++parameter_value)->piovec;
 
 					for (i = 0; i < size; i++) {
 						struct iovec *msg_iov = &iov[i];
@@ -399,10 +333,10 @@ retrace_event (struct rtr_event_info *event_info)
 							trace_dump_data((unsigned char *) iov->iov_base, msg_iov->iov_len);
 					}
 				} else if (GET_PARAMETER_TYPE(*parameter_type) == PARAMETER_TYPE_SSL_WITH_KEY) {
-					void *ssl = (*(void **) *parameter_value);
+					struct SSL *ssl = parameter_value->pssl;
 
-					if (ssl != NULL)
-						print_ssl_keys(ssl);
+					if (parameter_value->pssl != NULL)
+						print_ssl_keys(parameter_value->pssl);
 				}
 
 				parameter_type++;
