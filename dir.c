@@ -185,7 +185,6 @@ void RETRACE_IMPLEMENTATION(rewinddir)(DIR *dirp)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_DIR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirp};
-	rtr_rewinddir_t real_rewinddir;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "rewinddir";

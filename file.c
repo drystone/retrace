@@ -162,7 +162,6 @@ int RETRACE_IMPLEMENTATION(fseek)(FILE *stream, long offset, int whence)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_INT, PARAMETER_TYPE_INT | PARAMETER_FLAG_STRING_NEXT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream, &offset, &whence, &operation};
-	rtr_fseek_t real_fseek;
 	int r;
 
 	if (whence == 0)
@@ -293,7 +292,6 @@ int RETRACE_IMPLEMENTATION(close)(int fd)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd};
-	rtr_close_t real_close;
 	int r;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -346,7 +344,6 @@ int RETRACE_IMPLEMENTATION(dup2)(int oldfd, int newfd)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&oldfd, &newfd};
-	rtr_dup2_t real_dup2;
 	int r;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
