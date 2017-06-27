@@ -36,11 +36,8 @@ void *RETRACE_IMPLEMENTATION(malloc)(size_t bytes)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&bytes};
         void *p = NULL;
-        rtr_malloc_t real_malloc;
 	double fail_chance = 0;
 	int redirect = 0;
-
-        real_malloc = RETRACE_GET_REAL(malloc);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "malloc";
@@ -48,8 +45,8 @@ void *RETRACE_IMPLEMENTATION(malloc)(size_t bytes)
 	event_info.parameter_values = (void **) parameter_values;
 	event_info.return_value_type = PARAMETER_TYPE_POINTER;
 	event_info.return_value = &p;
-
 	retrace_event (&event_info);
+
 	if (rtr_get_config_single("memoryfuzzing", ARGUMENT_TYPE_DOUBLE, ARGUMENT_TYPE_END, &fail_chance)) {
 		long int random_value;
 
@@ -74,16 +71,13 @@ void *RETRACE_IMPLEMENTATION(malloc)(size_t bytes)
         return p;
 }
 
-RETRACE_REPLACE(malloc)
+RETRACE_REPLACE(malloc, void *, (size_t bytes), (bytes))
 
 void RETRACE_IMPLEMENTATION(free)(void *mem)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&mem};
-	rtr_free_t real_free;
-
-	real_free = RETRACE_GET_REAL(free);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "free";
@@ -100,7 +94,7 @@ void RETRACE_IMPLEMENTATION(free)(void *mem)
 
 }
 
-RETRACE_REPLACE(free)
+RETRACE_REPLACE(free, void, (void *mem), (mem))
 
 void *RETRACE_IMPLEMENTATION(calloc)(size_t nmemb, size_t size)
 {
@@ -108,11 +102,8 @@ void *RETRACE_IMPLEMENTATION(calloc)(size_t nmemb, size_t size)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&nmemb, &size};
         void *p = NULL;
-        rtr_calloc_t real_calloc;
 	double fail_chance = 0;
 	int redirect = 0;
-
-        real_calloc = RETRACE_GET_REAL(calloc);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "calloc";
@@ -122,6 +113,7 @@ void *RETRACE_IMPLEMENTATION(calloc)(size_t nmemb, size_t size)
 	event_info.return_value = &p;
 
 	retrace_event (&event_info);
+
 	if (rtr_get_config_single("memoryfuzzing", ARGUMENT_TYPE_DOUBLE, ARGUMENT_TYPE_END, &fail_chance)) {
 		long int random_value;
 
@@ -146,7 +138,7 @@ void *RETRACE_IMPLEMENTATION(calloc)(size_t nmemb, size_t size)
         return p;
 }
 
-RETRACE_REPLACE(calloc)
+RETRACE_REPLACE(calloc, void *, (size_t nmemb, size_t size), (nmemb, size))
 
 void *RETRACE_IMPLEMENTATION(realloc)(void *ptr, size_t size)
 {
@@ -154,11 +146,8 @@ void *RETRACE_IMPLEMENTATION(realloc)(void *ptr, size_t size)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&ptr, &size};
         void *p = NULL;
-        rtr_realloc_t real_realloc;
 	double fail_chance;
 	int redirect = 0;
-
-        real_realloc = RETRACE_GET_REAL(realloc);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "realloc";
@@ -168,6 +157,7 @@ void *RETRACE_IMPLEMENTATION(realloc)(void *ptr, size_t size)
 	event_info.return_value = &p;
 
 	retrace_event (&event_info);
+
 	if (size > 0 && rtr_get_config_single("memoryfuzzing", ARGUMENT_TYPE_DOUBLE, ARGUMENT_TYPE_END, &fail_chance)) {
 		long int random_value;
 
@@ -192,4 +182,4 @@ void *RETRACE_IMPLEMENTATION(realloc)(void *ptr, size_t size)
         return p;
 }
 
-RETRACE_REPLACE(realloc)
+RETRACE_REPLACE(realloc, void *, (void *ptr, size_t size), (ptr, size))

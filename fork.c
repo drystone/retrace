@@ -31,9 +31,6 @@ pid_t RETRACE_IMPLEMENTATION(fork)(void)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
 	pid_t p;
-	rtr_fork_t real_fork;
-
-	real_fork = RETRACE_GET_REAL(fork);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fork";
@@ -50,4 +47,4 @@ pid_t RETRACE_IMPLEMENTATION(fork)(void)
 	return p;
 }
 
-RETRACE_REPLACE(fork)
+RETRACE_REPLACE(fork, pid_t, (void), ())

@@ -32,9 +32,6 @@ char *RETRACE_IMPLEMENTATION(ctime_r)(const time_t *timep, char *buf)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&timep, &buf};
 	char *r = NULL;
-	rtr_ctime_r_t real_ctime_r;
-
-	real_ctime_r = RETRACE_GET_REAL(ctime_r);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "ctime_r";
@@ -52,7 +49,7 @@ char *RETRACE_IMPLEMENTATION(ctime_r)(const time_t *timep, char *buf)
 	return r;
 }
 
-RETRACE_REPLACE(ctime_r)
+RETRACE_REPLACE(ctime_r, char *, (const time_t *timep, char *buf), (timep, buf))
 
 char *RETRACE_IMPLEMENTATION(ctime)(const time_t *timep)
 {
@@ -60,9 +57,6 @@ char *RETRACE_IMPLEMENTATION(ctime)(const time_t *timep)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&timep};
 	char *r;
-	rtr_ctime_t real_ctime;
-
-	real_ctime = RETRACE_GET_REAL(ctime);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "ctime";
@@ -80,7 +74,7 @@ char *RETRACE_IMPLEMENTATION(ctime)(const time_t *timep)
 	return r;
 }
 
-RETRACE_REPLACE(ctime)
+RETRACE_REPLACE(ctime, char *, (const time_t *timep), (timep))
 
 #if defined(__APPLE__) || defined(__NetBSD__)
 int RETRACE_IMPLEMENTATION(gettimeofday)(struct timeval *tv, void *tzp)
@@ -92,14 +86,11 @@ int RETRACE_IMPLEMENTATION(gettimeofday)(struct timeval *tv, struct timezone *tz
 	unsigned int parameter_types[] = {PARAMETER_TYPE_TIMEVAL, PARAMETER_TYPE_TIMEZONE, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&tv, &tz};
 	int ret;
-	rtr_gettimeofday_t real_gettimeofday;
 #if defined(__APPLE__) || defined(__NetBSD__)
 	struct timezone *tz;
 
 	tz = (struct timezone *)tzp;
 #endif
-
-	real_gettimeofday = RETRACE_GET_REAL(gettimeofday);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "gettimeofday";
@@ -117,4 +108,8 @@ int RETRACE_IMPLEMENTATION(gettimeofday)(struct timeval *tv, struct timezone *tz
 	return ret;
 }
 
-RETRACE_REPLACE(gettimeofday)
+#if defined(__APPLE__) || defined(__NetBSD__)
+RETRACE_REPLACE(gettimeofday, int, (struct timeval *tv, void *tzp), (tv, tsp))
+#else
+RETRACE_REPLACE(gettimeofday, int, (struct timeval *tv, struct timezone *tz), (tv, tz))
+#endif

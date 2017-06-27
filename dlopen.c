@@ -31,10 +31,7 @@ void *RETRACE_IMPLEMENTATION(dlopen)(const char *filename, int flag)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&filename, &flag};
-	rtr_dlopen_t real_dlopen;
-	void *r;
-
-	real_dlopen = RETRACE_GET_REAL(dlopen);
+	void *r = NULL;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dlopen";
@@ -52,16 +49,15 @@ void *RETRACE_IMPLEMENTATION(dlopen)(const char *filename, int flag)
 	return r;
 }
 
-RETRACE_REPLACE(dlopen)
+RETRACE_REPLACE(dlopen, void *, (const char *filename, int flag),
+	(filename, flag))
+
 
 char *RETRACE_IMPLEMENTATION(dlerror)(void)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
-	rtr_dlerror_t real_dlerror;
 	char *r = NULL;
-
-	real_dlerror = RETRACE_GET_REAL(dlerror);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dlerror";
@@ -78,7 +74,8 @@ char *RETRACE_IMPLEMENTATION(dlerror)(void)
 	return r;
 }
 
-RETRACE_REPLACE(dlerror)
+RETRACE_REPLACE(dlerror, char *, (void), ())
+
 
 #if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__OpenBSD__)
 #ifdef HAVE_ATOMIC_BUILTINS
@@ -87,10 +84,7 @@ void *RETRACE_IMPLEMENTATION(dlsym)(void *handle, const char *symbol)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&handle, &symbol};
-	rtr_dlsym_t real_dlsym;
-	void *r;
-
-	real_dlsym = RETRACE_GET_REAL(dlsym);
+	void *r = NULL;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dlsym";
@@ -108,7 +102,8 @@ void *RETRACE_IMPLEMENTATION(dlsym)(void *handle, const char *symbol)
 	return r;
 }
 
-RETRACE_REPLACE(dlsym)
+RETRACE_REPLACE(dlsym, void *, (void *handle, const char *symbol),
+	(handle, symbol))
 #endif
 #endif
 
@@ -117,10 +112,7 @@ int RETRACE_IMPLEMENTATION(dlclose)(void *handle)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_POINTER, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&handle};
-	rtr_dlclose_t real_dlclose;
 	int r;
-
-	real_dlclose = RETRACE_GET_REAL(dlclose);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dlclose";
@@ -140,4 +132,4 @@ int RETRACE_IMPLEMENTATION(dlclose)(void *handle)
 	return r;
 }
 
-RETRACE_REPLACE(dlclose)
+RETRACE_REPLACE(dlclose, int, (void *handle), (handle))

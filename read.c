@@ -30,13 +30,10 @@ ssize_t RETRACE_IMPLEMENTATION(read)(int fd, void *buf, size_t nbytes)
 {
 	ssize_t ret = 0;
 	struct descriptor_info *di;
-	rtr_read_t real_read;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &ret, &buf, &nbytes};
 
-
-	real_read = RETRACE_GET_REAL(read);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "read";
@@ -59,4 +56,5 @@ ssize_t RETRACE_IMPLEMENTATION(read)(int fd, void *buf, size_t nbytes)
 	return ret;
 }
 
-RETRACE_REPLACE(read)
+RETRACE_REPLACE(read, ssize_t, (int fd, void *buf, size_t nbytes),
+	(fd, buf, nbytes))

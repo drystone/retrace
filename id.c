@@ -36,8 +36,6 @@ int RETRACE_IMPLEMENTATION(setuid)(uid_t uid)
 	rtr_setuid_t real_setuid;
 	int r;
 
-	real_setuid = RETRACE_GET_REAL(setuid);
-
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "setuid";
 	event_info.parameter_types = parameter_types;
@@ -54,7 +52,7 @@ int RETRACE_IMPLEMENTATION(setuid)(uid_t uid)
 	return (r);
 }
 
-RETRACE_REPLACE(setuid)
+RETRACE_REPLACE(setuid, int, (uid_t uid), (uid))
 
 int RETRACE_IMPLEMENTATION(seteuid)(uid_t uid)
 {
@@ -63,8 +61,6 @@ int RETRACE_IMPLEMENTATION(seteuid)(uid_t uid)
 	void *parameter_values[] = {&uid};
 	rtr_seteuid_t real_seteuid;
 	int r;
-
-	real_seteuid = RETRACE_GET_REAL(seteuid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "seteuid";
@@ -82,7 +78,7 @@ int RETRACE_IMPLEMENTATION(seteuid)(uid_t uid)
 	return (r);
 }
 
-RETRACE_REPLACE(seteuid)
+RETRACE_REPLACE(seteuid, int, (uid_t uid), (uid))
 
 int RETRACE_IMPLEMENTATION(setgid)(gid_t gid)
 {
@@ -91,8 +87,6 @@ int RETRACE_IMPLEMENTATION(setgid)(gid_t gid)
 	void *parameter_values[] = {&gid};
 	rtr_setgid_t real_setgid;
 	int r;
-
-	real_setgid = RETRACE_GET_REAL(setgid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "setgid";
@@ -111,16 +105,13 @@ int RETRACE_IMPLEMENTATION(setgid)(gid_t gid)
 	return (r);
 }
 
-RETRACE_REPLACE(setgid)
+RETRACE_REPLACE(setgid, int, (gid_t gid), (gid))
 
 gid_t RETRACE_IMPLEMENTATION(getgid)()
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
 	int gid;
-	rtr_getgid_t real_getgid;
-
-	real_getgid = RETRACE_GET_REAL(getgid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "getgid";
@@ -138,16 +129,13 @@ gid_t RETRACE_IMPLEMENTATION(getgid)()
 	return gid;
 }
 
-RETRACE_REPLACE(getgid)
+RETRACE_REPLACE(getgid, gid_t, (), ())
 
 gid_t RETRACE_IMPLEMENTATION(getegid)()
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
 	int egid;
-	rtr_getegid_t real_getegid;
-
-	real_getegid = RETRACE_GET_REAL(getegid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "getegid";
@@ -165,7 +153,7 @@ gid_t RETRACE_IMPLEMENTATION(getegid)()
 	return egid;
 }
 
-RETRACE_REPLACE(getegid)
+RETRACE_REPLACE(getegid, gid_t, (), ())
 
 uid_t RETRACE_IMPLEMENTATION(getuid)()
 {
@@ -173,15 +161,12 @@ uid_t RETRACE_IMPLEMENTATION(getuid)()
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
 	int redirect_id;
 	int uid;
-	rtr_getuid_t real_getuid;
 
 	if (rtr_get_config_single("getuid", ARGUMENT_TYPE_INT, ARGUMENT_TYPE_END, &redirect_id)) {
 		trace_printf(1, "getuid(); [redirection in effect: '%i']\n", redirect_id);
 
 		return redirect_id;
 	}
-
-	real_getuid = RETRACE_GET_REAL(getuid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "getuid";
@@ -200,7 +185,7 @@ uid_t RETRACE_IMPLEMENTATION(getuid)()
 	return uid;
 }
 
-RETRACE_REPLACE(getuid)
+RETRACE_REPLACE(getuid, uid_t, (), ())
 
 uid_t RETRACE_IMPLEMENTATION(geteuid)()
 {
@@ -208,15 +193,12 @@ uid_t RETRACE_IMPLEMENTATION(geteuid)()
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
 	int euid;
 	int redirect_id;
-	rtr_geteuid_t real_geteuid;
 
 	if (rtr_get_config_single("geteuid", ARGUMENT_TYPE_INT, ARGUMENT_TYPE_END, &redirect_id)) {
 		trace_printf(1, "geteuid(); [redirection in effect: '%i']\n", redirect_id);
 
 		return redirect_id;
 	}
-
-	real_geteuid = RETRACE_GET_REAL(geteuid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "geteuid";
@@ -233,16 +215,13 @@ uid_t RETRACE_IMPLEMENTATION(geteuid)()
 	return euid;
 }
 
-RETRACE_REPLACE(geteuid)
+RETRACE_REPLACE(geteuid, uid_t, (), ())
 
-pid_t RETRACE_IMPLEMENTATION(getpid)(void)
+pid_t RETRACE_IMPLEMENTATION(getpid)()
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
 	int pid;
-	rtr_getpid_t real_getpid;
-
-	real_getpid = RETRACE_GET_REAL(getpid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "getpid";
@@ -260,16 +239,13 @@ pid_t RETRACE_IMPLEMENTATION(getpid)(void)
 	return pid;
 }
 
-RETRACE_REPLACE(getpid)
+RETRACE_REPLACE(getpid, pid_t, (), ())
 
-pid_t RETRACE_IMPLEMENTATION(getppid)(void)
+pid_t RETRACE_IMPLEMENTATION(getppid)()
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_END};
 	int ppid;
-	rtr_getppid_t real_getppid;
-
-	real_getppid = RETRACE_GET_REAL(getppid);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "getppid";
@@ -287,4 +263,4 @@ pid_t RETRACE_IMPLEMENTATION(getppid)(void)
 	return ppid;
 }
 
-RETRACE_REPLACE(getppid)
+RETRACE_REPLACE(getppid, pid_t, (), ())

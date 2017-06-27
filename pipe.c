@@ -34,9 +34,6 @@ int RETRACE_IMPLEMENTATION(pipe)(int pipefd[2])
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_FILE_DESCRIPTOR,  PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&pipefd[0], &pipefd[1]};
 	int ret;
-	rtr_pipe_t real_pipe;
-
-	real_pipe = RETRACE_GET_REAL(pipe);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "pipe";
@@ -54,7 +51,8 @@ int RETRACE_IMPLEMENTATION(pipe)(int pipefd[2])
 	return ret;
 }
 
-RETRACE_REPLACE(pipe)
+RETRACE_REPLACE(pipe, int, (int pipefd[2]), (pipefd))
+
 
 #ifndef __APPLE__
 
@@ -64,9 +62,6 @@ int RETRACE_IMPLEMENTATION(pipe2)(int pipefd[2], int flags)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&pipefd[0], &pipefd[1], &flags};
 	int ret;
-	rtr_pipe2_t real_pipe2;
-
-	real_pipe2 = RETRACE_GET_REAL(pipe2);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "pipe2";
@@ -84,6 +79,6 @@ int RETRACE_IMPLEMENTATION(pipe2)(int pipefd[2], int flags)
 	return ret;
 }
 
-RETRACE_REPLACE(pipe2)
+RETRACE_REPLACE(pipe2, int, (int pipefd[2], int flags), (pipefd, flags))
 
 #endif

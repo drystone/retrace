@@ -36,9 +36,6 @@ int RETRACE_IMPLEMENTATION(unsetenv)(const char *name)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&name};
 	int r;
-	rtr_unsetenv_t real_unsetenv;
-
-	real_unsetenv = RETRACE_GET_REAL(unsetenv);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "unsetenv";
@@ -56,7 +53,7 @@ int RETRACE_IMPLEMENTATION(unsetenv)(const char *name)
 	return (r);
 }
 
-RETRACE_REPLACE(unsetenv)
+RETRACE_REPLACE(unsetenv, int, (const char *name), (name))
 
 int RETRACE_IMPLEMENTATION(putenv)(char *string)
 {
@@ -64,10 +61,6 @@ int RETRACE_IMPLEMENTATION(putenv)(char *string)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&string};
 	int r;
-
-	rtr_putenv_t real_putenv;
-
-	real_putenv = RETRACE_GET_REAL(putenv);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "putenv";
@@ -85,17 +78,14 @@ int RETRACE_IMPLEMENTATION(putenv)(char *string)
 	return (r);
 }
 
-RETRACE_REPLACE(putenv)
+RETRACE_REPLACE(putenv, int, (char *string), (string))
 
 char *RETRACE_IMPLEMENTATION(getenv)(const char *envname)
 {
   	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&envname};
-	rtr_getenv_t real_getenv;
 	char *env = NULL;
-
-	real_getenv = RETRACE_GET_REAL(getenv);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "getenv";
@@ -114,18 +104,15 @@ char *RETRACE_IMPLEMENTATION(getenv)(const char *envname)
 	return (env);
 }
 
-RETRACE_REPLACE(getenv)
+RETRACE_REPLACE(getenv, char *, (const char *envname), (envname))
 
 int RETRACE_IMPLEMENTATION(uname)(struct utsname *buf)
 {
 
 	int ret;
-	rtr_uname_t real_uname;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_UTSNAME, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&buf};
-
-	real_uname = RETRACE_GET_REAL(uname);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "uname";
@@ -140,13 +127,7 @@ int RETRACE_IMPLEMENTATION(uname)(struct utsname *buf)
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
-	if (ret == 0)
-		trace_printf(1, "uname(); [%s, %s, %s, %s, %s]\n", buf->sysname, buf->nodename,
-				buf->release, buf->version, buf->machine);
-	else
-		trace_printf(1, "uname(); NULL");
-
 	return ret;
 }
 
-RETRACE_REPLACE(uname)
+RETRACE_REPLACE(uname, int, (struct utsname *buf), (buf))

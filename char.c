@@ -53,21 +53,21 @@ RETRACE_IMPLEMENTATION(putc)(int c, FILE *stream)
 	event_info.return_value = &r;
 	retrace_event (&event_info);
 
-	r = RETRACE_GET_REAL(putc)(c, stream);
+	r = real_putc(c, stream);
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
-	return (RETRACE_GET_REAL(putc)(c, stream));
+	return (r);
 }
 
-RETRACE_REPLACE(putc)
+RETRACE_REPLACE(putc, int, (int c, FILE *stream), (c, stream))
+
 
 #ifndef __APPLE__
 int
 RETRACE_IMPLEMENTATION(_IO_putc)(int c, FILE *stream)
 {
-
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&c, &stream};
@@ -81,7 +81,7 @@ RETRACE_IMPLEMENTATION(_IO_putc)(int c, FILE *stream)
 	event_info.return_value = &r;
 	retrace_event (&event_info);
 
-	r = RETRACE_GET_REAL(_IO_putc)(c, stream);
+	r = real__IO_putc(c, stream);
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
@@ -89,7 +89,8 @@ RETRACE_IMPLEMENTATION(_IO_putc)(int c, FILE *stream)
 	return (r);
 }
 
-RETRACE_REPLACE(_IO_putc)
+RETRACE_REPLACE(_IO_putc, int, (int c, FILE *stream), (c, stream))
+
 #endif
 
 int
@@ -98,7 +99,6 @@ RETRACE_IMPLEMENTATION(toupper)(int c)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&c};
-	rtr_toupper_t real_toupper = RETRACE_GET_REAL(toupper);
 	int r;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -117,7 +117,8 @@ RETRACE_IMPLEMENTATION(toupper)(int c)
 	return (r);
 }
 
-RETRACE_REPLACE(toupper)
+RETRACE_REPLACE(toupper, int, (int c), (c))
+
 
 int
 RETRACE_IMPLEMENTATION(tolower)(int c)
@@ -125,7 +126,6 @@ RETRACE_IMPLEMENTATION(tolower)(int c)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&c};
-	rtr_tolower_t real_tolower = RETRACE_GET_REAL(tolower);
 	int r;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -138,11 +138,10 @@ RETRACE_IMPLEMENTATION(tolower)(int c)
 
 	r = real_tolower(c);
 
-
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
 	return (r);
 }
 
-RETRACE_REPLACE(tolower)
+RETRACE_REPLACE(tolower, int, (int c), (c))

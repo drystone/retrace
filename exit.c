@@ -31,7 +31,6 @@ void RETRACE_IMPLEMENTATION(exit)(int status)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void *parameter_values[] = {&status};
-	rtr_exit_t real_exit;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "exit";
@@ -40,9 +39,7 @@ void RETRACE_IMPLEMENTATION(exit)(int status)
 	event_info.return_value_type = PARAMETER_TYPE_END;
 	retrace_event (&event_info);
 
-	real_exit = RETRACE_GET_REAL(exit);
-
 	real_exit(status);
 }
 
-RETRACE_REPLACE(exit)
+RETRACE_REPLACE(exit, void, (int status), (status))

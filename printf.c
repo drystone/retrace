@@ -34,16 +34,12 @@ int
 RETRACE_IMPLEMENTATION(printf)(const char *fmt, ...)
 {
 	int result;
-	rtr_vprintf_t vprintf_;
 	va_list ap;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fmt, &ap};
 
-	vprintf_ = RETRACE_GET_REAL(vprintf);
-
 	va_start(ap, fmt);
-
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "printf";
 	event_info.parameter_types = parameter_types;
@@ -54,7 +50,7 @@ RETRACE_IMPLEMENTATION(printf)(const char *fmt, ...)
 	va_end(ap);
 
 	va_start(ap, fmt);
-	result = vprintf_(fmt, ap);
+	result = real_vprintf(fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
@@ -65,19 +61,16 @@ RETRACE_IMPLEMENTATION(printf)(const char *fmt, ...)
 	return result;
 }
 
-RETRACE_REPLACE(printf)
+RETRACE_REPLACE_V(printf, int, (const char *fmt, ...), fmt, real_vprintf, (fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(fprintf)(FILE *stream, const char *fmt, ...)
 {
 	int result;
-	rtr_vfprintf_t vfprintf_;
 	va_list ap;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream, &fmt, &ap};
-
-	vfprintf_	= RETRACE_GET_REAL(vfprintf);
 
 	va_start(ap, fmt);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -90,7 +83,7 @@ RETRACE_IMPLEMENTATION(fprintf)(FILE *stream, const char *fmt, ...)
 	va_end(ap);
 
 	va_start(ap, fmt);
-	result = vfprintf_(stream, fmt, ap);
+	result = real_vfprintf(stream, fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
@@ -101,21 +94,19 @@ RETRACE_IMPLEMENTATION(fprintf)(FILE *stream, const char *fmt, ...)
 	return result;
 }
 
-RETRACE_REPLACE(fprintf)
+RETRACE_REPLACE_V(fprintf, int, (FILE *stream, const char *fmt, ...), fmt, real_vfprintf, (stream, fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(dprintf)(int fd, const char *fmt, ...)
 {
 	int result;
-	rtr_vdprintf_t vdprintf_;
 	va_list ap;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &fmt, &ap};
 
-	vdprintf_ = RETRACE_GET_REAL(vdprintf);
-
 	va_start(ap, fmt);
+
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dprintf";
 	event_info.parameter_types = parameter_types;
@@ -126,7 +117,7 @@ RETRACE_IMPLEMENTATION(dprintf)(int fd, const char *fmt, ...)
 	va_end(ap);
 
 	va_start(ap, fmt);
-	result = vdprintf_(fd, fmt, ap);
+	result = real_vdprintf(fd, fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
@@ -137,19 +128,16 @@ RETRACE_IMPLEMENTATION(dprintf)(int fd, const char *fmt, ...)
 	return result;
 }
 
-RETRACE_REPLACE(dprintf)
+RETRACE_REPLACE_V(dprintf, int, (int fd, const char *fmt, ...), fmt, vdprintf, (fd, fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(sprintf)(char *str, const char *fmt, ...)
 {
 	int result;
-	rtr_vsprintf_t vsprintf_;
 	va_list ap;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &fmt, &ap};
-
-	vsprintf_ = RETRACE_GET_REAL(vsprintf);
 
 	va_start(ap, fmt);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -162,7 +150,7 @@ RETRACE_IMPLEMENTATION(sprintf)(char *str, const char *fmt, ...)
 	va_end(ap);
 
 	va_start(ap, fmt);
-	result = vsprintf_(str, fmt, ap);
+	result = real_vsprintf(str, fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
@@ -173,19 +161,16 @@ RETRACE_IMPLEMENTATION(sprintf)(char *str, const char *fmt, ...)
 	return result;
 }
 
-RETRACE_REPLACE(sprintf)
+RETRACE_REPLACE_V(sprintf, int, (char *str, const char *fmt, ...), fmt, vsprintf, (str, fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(snprintf)(char *str, size_t size, const char *fmt, ...)
 {
 	int result;
-	rtr_vsnprintf_t vsnprintf_;
 	va_list ap;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &size, &fmt, &ap};
-
-	vsnprintf_ = RETRACE_GET_REAL(vsnprintf);
 
 	va_start(ap, fmt);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -198,7 +183,7 @@ RETRACE_IMPLEMENTATION(snprintf)(char *str, size_t size, const char *fmt, ...)
 	va_end(ap);
 
 	va_start(ap, fmt);
-	result = vsnprintf_(str, size, fmt, ap);
+	result = real_vsnprintf(str, size, fmt, ap);
 	va_end(ap);
 
 	va_start(ap, fmt);
@@ -209,19 +194,16 @@ RETRACE_IMPLEMENTATION(snprintf)(char *str, size_t size, const char *fmt, ...)
 	return result;
 }
 
-RETRACE_REPLACE(snprintf)
+RETRACE_REPLACE_V(snprintf, int, (char *str, size_t size, const char *fmt, ...), fmt, vsnprintf, (str, size, fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(vprintf)(const char *fmt, va_list ap)
 {
 	int result;
-	rtr_vprintf_t vprintf_;
 	va_list ap1;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fmt, &ap1};
-
-	vprintf_ = RETRACE_GET_REAL(vprintf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -234,7 +216,7 @@ RETRACE_IMPLEMENTATION(vprintf)(const char *fmt, va_list ap)
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
-	result = vprintf_(fmt, ap);
+	result = real_vprintf(fmt, ap);
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
@@ -245,19 +227,16 @@ RETRACE_IMPLEMENTATION(vprintf)(const char *fmt, va_list ap)
 	return result;
 }
 
-RETRACE_REPLACE(vprintf)
+RETRACE_REPLACE(vprintf, int, (const char *fmt, va_list ap), (fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(vfprintf)(FILE *stream, const char *fmt, va_list ap)
 {
 	int result;
-	rtr_vfprintf_t vfprintf_;
 	va_list ap1;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream, &fmt, &ap1};
-
-	vfprintf_	= RETRACE_GET_REAL(vfprintf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -270,7 +249,7 @@ RETRACE_IMPLEMENTATION(vfprintf)(FILE *stream, const char *fmt, va_list ap)
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
-	result = vfprintf_(stream, fmt, ap);
+	result = real_vfprintf(stream, fmt, ap);
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
@@ -281,19 +260,16 @@ RETRACE_IMPLEMENTATION(vfprintf)(FILE *stream, const char *fmt, va_list ap)
 	return result;
 }
 
-RETRACE_REPLACE(vfprintf)
+RETRACE_REPLACE(vfprintf, int, (FILE *stream, const char *fmt, va_list ap), (stream, fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(vdprintf)(int fd, const char *fmt, va_list ap)
 {
 	int result;
-	rtr_vdprintf_t vdprintf_;
 	va_list ap1;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &fmt, &ap1};
-
-	vdprintf_ = RETRACE_GET_REAL(vdprintf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -306,7 +282,7 @@ RETRACE_IMPLEMENTATION(vdprintf)(int fd, const char *fmt, va_list ap)
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
-	result = vdprintf_(fd, fmt, ap);
+	result = real_vdprintf(fd, fmt, ap);
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
@@ -317,19 +293,16 @@ RETRACE_IMPLEMENTATION(vdprintf)(int fd, const char *fmt, va_list ap)
 	return result;
 }
 
-RETRACE_REPLACE(vdprintf)
+RETRACE_REPLACE(vdprintf, int, (int fd, const char *fmt, va_list ap), (fd, fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(vsprintf)(char *str, const char *fmt, va_list ap)
 {
 	int result;
-	rtr_vsprintf_t vsprintf_;
 	va_list ap1;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &fmt, &ap1};
-
-	vsprintf_ = RETRACE_GET_REAL(vsprintf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -342,7 +315,7 @@ RETRACE_IMPLEMENTATION(vsprintf)(char *str, const char *fmt, va_list ap)
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
-	result = vsprintf_(str, fmt, ap);
+	result = real_vsprintf(str, fmt, ap);
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
@@ -353,19 +326,16 @@ RETRACE_IMPLEMENTATION(vsprintf)(char *str, const char *fmt, va_list ap)
 	return result;
 }
 
-RETRACE_REPLACE(vsprintf)
+RETRACE_REPLACE(vsprintf, int, (char *str, const char *fmt, va_list ap), (str, fmt, ap))
 
 int
 RETRACE_IMPLEMENTATION(vsnprintf)(char *str, size_t size, const char *fmt, va_list ap)
 {
 	int result;
-	rtr_vsnprintf_t vsnprintf_;
 	va_list ap1;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &size, &fmt, &ap1};
-
-	vsnprintf_ = RETRACE_GET_REAL(vsnprintf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -378,7 +348,7 @@ RETRACE_IMPLEMENTATION(vsnprintf)(char *str, size_t size, const char *fmt, va_li
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
-	result = vsnprintf_(str, size, fmt, ap1);
+	result = real_vsnprintf(str, size, fmt, ap);
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
@@ -389,4 +359,4 @@ RETRACE_IMPLEMENTATION(vsnprintf)(char *str, size_t size, const char *fmt, va_li
 	return result;
 }
 
-RETRACE_REPLACE(vsnprintf)
+RETRACE_REPLACE(vsnprintf, int, (char *str, size_t size, const char *fmt, va_list ap), (str, size, fmt, ap))

@@ -32,9 +32,6 @@ DIR *RETRACE_IMPLEMENTATION(opendir)(const char *dirname)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING,  PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirname};
 	DIR *dirp = NULL;
-	rtr_opendir_t real_opendir;
-
-	real_opendir	= RETRACE_GET_REAL(opendir);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "opendir";
@@ -52,17 +49,15 @@ DIR *RETRACE_IMPLEMENTATION(opendir)(const char *dirname)
 	return dirp;
 }
 
-RETRACE_REPLACE(opendir)
+RETRACE_REPLACE(opendir, DIR *, (const char *dirname), (dirname))
+
 
 int RETRACE_IMPLEMENTATION(closedir)(DIR *dirp)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_DIR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirp};
-	rtr_closedir_t real_closedir;
 	int r;
-
-	real_closedir	= RETRACE_GET_REAL(closedir);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "closedir";
@@ -80,17 +75,15 @@ int RETRACE_IMPLEMENTATION(closedir)(DIR *dirp)
 	return (r);
 }
 
-RETRACE_REPLACE(closedir)
+RETRACE_REPLACE(closedir, int, (DIR *dirp), (dirp))
+
 
 DIR *RETRACE_IMPLEMENTATION(fdopendir)(int fd)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd};
-	rtr_fdopendir_t real_fdopendir;
 	DIR *dirp = NULL;
-
-	real_fdopendir = RETRACE_GET_REAL(fdopendir);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fdopendir";
@@ -108,7 +101,8 @@ DIR *RETRACE_IMPLEMENTATION(fdopendir)(int fd)
 	return (dirp);
 }
 
-RETRACE_REPLACE(fdopendir)
+RETRACE_REPLACE(fdopendir, DIR *, (int fd), (fd))
+
 
 int RETRACE_IMPLEMENTATION(readdir_r)(DIR *dirp, struct dirent *entry, struct dirent **result)
 {
@@ -116,9 +110,6 @@ int RETRACE_IMPLEMENTATION(readdir_r)(DIR *dirp, struct dirent *entry, struct di
 	unsigned int parameter_types[] = {PARAMETER_TYPE_DIR, PARAMETER_TYPE_POINTER, PARAMETER_TYPE_POINTER, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirp, &entry, &result};
 	int ret;
-	rtr_readdir_r_t real_readdir_r;
-
-	real_readdir_r	= RETRACE_GET_REAL(readdir_r);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "readdir_r";
@@ -136,7 +127,10 @@ int RETRACE_IMPLEMENTATION(readdir_r)(DIR *dirp, struct dirent *entry, struct di
 	return ret;
 }
 
-RETRACE_REPLACE(readdir_r)
+RETRACE_REPLACE(readdir_r, int,
+	(DIR *dirp, struct dirent *entry, struct dirent **result),
+	(dirp, entry, result))
+
 
 long RETRACE_IMPLEMENTATION(telldir)(DIR *dirp)
 {
@@ -144,9 +138,6 @@ long RETRACE_IMPLEMENTATION(telldir)(DIR *dirp)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_DIR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirp};
 	long offset;
-	rtr_telldir_t real_telldir;
-
-	real_telldir	= RETRACE_GET_REAL(telldir);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "telldir";
@@ -164,16 +155,14 @@ long RETRACE_IMPLEMENTATION(telldir)(DIR *dirp)
 	return offset;
 }
 
-RETRACE_REPLACE(telldir)
+RETRACE_REPLACE(telldir, long, (DIR *dirp), (dirp))
+
 
 void RETRACE_IMPLEMENTATION(seekdir)(DIR *dirp, long loc)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_DIR, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirp, &loc};
-	rtr_seekdir_t real_seekdir;
-
-	real_seekdir	= RETRACE_GET_REAL(seekdir);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "seekdir";
@@ -188,7 +177,8 @@ void RETRACE_IMPLEMENTATION(seekdir)(DIR *dirp, long loc)
 	retrace_event (&event_info);
 }
 
-RETRACE_REPLACE(seekdir)
+RETRACE_REPLACE(seekdir, void, (DIR *dirp, long loc), (dirp, loc))
+
 
 void RETRACE_IMPLEMENTATION(rewinddir)(DIR *dirp)
 {
@@ -196,8 +186,6 @@ void RETRACE_IMPLEMENTATION(rewinddir)(DIR *dirp)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_DIR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirp};
 	rtr_rewinddir_t real_rewinddir;
-
-	real_rewinddir	= RETRACE_GET_REAL(rewinddir);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "rewinddir";
@@ -212,7 +200,8 @@ void RETRACE_IMPLEMENTATION(rewinddir)(DIR *dirp)
 	retrace_event (&event_info);
 }
 
-RETRACE_REPLACE(rewinddir)
+RETRACE_REPLACE(rewinddir, void, (DIR *dirp), (dirp))
+
 
 int RETRACE_IMPLEMENTATION(dirfd)(DIR *dirp)
 {
@@ -220,9 +209,6 @@ int RETRACE_IMPLEMENTATION(dirfd)(DIR *dirp)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_DIR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirp};
 	int dir_fd;
-	rtr_dirfd_t real_dirfd;
-
-	real_dirfd = RETRACE_GET_REAL(dirfd);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dirfd";
@@ -241,4 +227,4 @@ int RETRACE_IMPLEMENTATION(dirfd)(DIR *dirp)
 	return dir_fd;
 }
 
-RETRACE_REPLACE(dirfd)
+RETRACE_REPLACE(dirfd, int, (DIR *dirp), (dirp))

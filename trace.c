@@ -29,6 +29,19 @@
 #include <sys/types.h>
 #include <sys/ptrace.h>
 
+long int ptrace_v(int request, va_list ap)
+{
+	pid_t pid;
+	caddr_t addr;
+	int data;
+
+	pid = va_arg(ap, int);
+	addr = va_arg(ap, void *);
+	data = va_arg(ap, int);
+
+	return real_ptrace(request, pid, addr, data);
+}
+
 #ifdef __APPLE__
 long int RETRACE_IMPLEMENTATION(ptrace)(int request, ...)
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -40,10 +53,8 @@ long int RETRACE_IMPLEMENTATION(ptrace)(enum __ptrace_request request, ...)
 #endif
 {
 	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_INT | PARAMETER_FLAG_STRING_NEXT, PARAMETER_TYPE_INT, PARAMETER_TYPE_POINTER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
-        rtr_ptrace_t real_ptrace;
-        char *request_str;
-        int r;
+	char *request_str;
+	int r;
 #if defined(__APPLE__) || defined(__linux__)
 	int data;
 	pid_t pid;
@@ -51,15 +62,14 @@ long int RETRACE_IMPLEMENTATION(ptrace)(enum __ptrace_request request, ...)
 	va_list arglist;
 	va_start(arglist, request);
 
-        pid = va_arg(arglist, int);
-        addr = va_arg(arglist, void *);
-        data = va_arg(arglist, int);
+	pid = va_arg(arglist, int);
+	addr = va_arg(arglist, void *);
+	data = va_arg(arglist, int);
 
-        va_end(arglist);
+	va_end(arglist);
 #endif
+	unsigned int parameter_types[] = {PARAMETER_TYPE_INT | PARAMETER_FLAG_STRING_NEXT, PARAMETER_TYPE_INT, PARAMETER_TYPE_POINTER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&request, &request_str, &pid, &addr, &data};
-
-	real_ptrace = RETRACE_GET_REAL(ptrace);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "ptrace";
@@ -210,5 +220,17 @@ long int RETRACE_IMPLEMENTATION(ptrace)(enum __ptrace_request request, ...)
 	return r;
 }
 
-RETRACE_REPLACE(ptrace)
+#ifdef __APPLE__
+RETRACE_REPLACE_V(ptrace, long int, (int request, ...), request, ptrace_v,
+	(request, ap))
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+RETRACE_REPLACE(ptrace, int, (int request, pid_t pid, caddr_t addr, int data),
+	(request, pid, addr, data))
+#elif defined(__NetBSD__)
+RETRACE_REPLACE(ptrace, int, (int request, pid_t pid, void *addr, int data),
+	(request, pid, addr, data))
+#else
+RETRACE_REPLACE_V(ptrace, long int, (enum __ptrace_request request, ...),
+	request, ptrace_v, (request, ap))
+#endif
 

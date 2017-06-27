@@ -38,11 +38,8 @@
 
 int RETRACE_IMPLEMENTATION(stat)(const char *path, struct stat *buf)
 {
-	rtr_stat_t real_stat;
 	char perm[10];
 	int r;
-
-	real_stat = RETRACE_GET_REAL(stat);
 
 	trace_printf(1, "stat(\"%s\", buf);\n", path);
 
@@ -74,7 +71,7 @@ int RETRACE_IMPLEMENTATION(stat)(const char *path, struct stat *buf)
 	return r;
 }
 
-RETRACE_REPLACE(stat)
+RETRACE_REPLACE(stat, int, (const char *path, struct stat *buf), (path, buf))
 
 int RETRACE_IMPLEMENTATION(chmod)(const char *path, mode_t mode)
 {
@@ -83,10 +80,8 @@ int RETRACE_IMPLEMENTATION(chmod)(const char *path, mode_t mode)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT_OCTAL | PARAMETER_FLAG_STRING_NEXT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&path, &mode, &perm_p};
-	rtr_chmod_t real_chmod;
 	int r;
 
-	real_chmod = RETRACE_GET_REAL(chmod);
 	trace_mode(mode, perm);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -105,7 +100,7 @@ int RETRACE_IMPLEMENTATION(chmod)(const char *path, mode_t mode)
 	return (r);
 }
 
-RETRACE_REPLACE(chmod)
+RETRACE_REPLACE(chmod, int, (const char *path, mode_t mode), (path, mode))
 
 int RETRACE_IMPLEMENTATION(fchmod)(int fd, mode_t mode)
 {
@@ -114,10 +109,7 @@ int RETRACE_IMPLEMENTATION(fchmod)(int fd, mode_t mode)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_INT_OCTAL | PARAMETER_FLAG_STRING_NEXT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &mode, &perm_p};
-	rtr_fchmod_t real_fchmod;
 	int r;
-
-	real_fchmod = RETRACE_GET_REAL(fchmod);
 
 	trace_mode(mode, perm);
 
@@ -137,7 +129,7 @@ int RETRACE_IMPLEMENTATION(fchmod)(int fd, mode_t mode)
 	return (r);
 }
 
-RETRACE_REPLACE(fchmod)
+RETRACE_REPLACE(fchmod, int, (int fd, mode_t mode), (fd, mode))
 
 int RETRACE_IMPLEMENTATION(fileno)(FILE *stream)
 {
@@ -145,9 +137,6 @@ int RETRACE_IMPLEMENTATION(fileno)(FILE *stream)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream};
 	int fd;
-	rtr_fileno_t real_fileno;
-
-	real_fileno = RETRACE_GET_REAL(fileno);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fileno";
@@ -165,7 +154,7 @@ int RETRACE_IMPLEMENTATION(fileno)(FILE *stream)
 	return real_fileno(stream);
 }
 
-RETRACE_REPLACE(fileno)
+RETRACE_REPLACE(fileno, int, (FILE *stream), (stream))
 
 int RETRACE_IMPLEMENTATION(fseek)(FILE *stream, long offset, int whence)
 {
@@ -176,8 +165,6 @@ int RETRACE_IMPLEMENTATION(fseek)(FILE *stream, long offset, int whence)
 	rtr_fseek_t real_fseek;
 	int r;
 
-	real_fseek	= RETRACE_GET_REAL(fseek);
-
 	if (whence == 0)
 		operation = "SEEK_SET";
 	else if (whence == 1)
@@ -186,7 +173,6 @@ int RETRACE_IMPLEMENTATION(fseek)(FILE *stream, long offset, int whence)
 		operation = "SEEK_END";
 	else
 		operation = "UNDEFINED";
-
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fseek";
@@ -204,22 +190,18 @@ int RETRACE_IMPLEMENTATION(fseek)(FILE *stream, long offset, int whence)
 	return r;
 }
 
-RETRACE_REPLACE(fseek)
+RETRACE_REPLACE(fseek, int, (FILE *stream, long offset, int whence), (stream, offset, whence))
 
 int RETRACE_IMPLEMENTATION(fclose)(FILE *stream)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream};
-	int fd;
-	rtr_fclose_t real_fclose;
-	rtr_fileno_t real_fileno;
 	int r;
+	int fd = -1;
 
-	real_fclose = RETRACE_GET_REAL(fclose);
-	real_fileno = RETRACE_GET_REAL(fileno);
-
-	fd = real_fileno(stream);
+	if (stream)
+		fd = real_fileno(stream);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fclose";
@@ -240,7 +222,7 @@ int RETRACE_IMPLEMENTATION(fclose)(FILE *stream)
 	return r;
 }
 
-RETRACE_REPLACE(fclose)
+RETRACE_REPLACE(fclose, int, (FILE *stream), (stream))
 
 FILE *RETRACE_IMPLEMENTATION(fopen)(const char *file, const char *mode)
 {
@@ -249,14 +231,9 @@ FILE *RETRACE_IMPLEMENTATION(fopen)(const char *file, const char *mode)
 	char *match_file = NULL;
 	FILE *ret;
 	char *redirect_file = NULL;
-	rtr_fopen_t real_fopen;
-	rtr_strcmp_t real_strcmp;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&file, &mode};
-
-	real_fopen	= RETRACE_GET_REAL(fopen);
-	real_strcmp	= RETRACE_GET_REAL(strcmp);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fopen";
@@ -297,7 +274,7 @@ FILE *RETRACE_IMPLEMENTATION(fopen)(const char *file, const char *mode)
 	if (ret) {
 		int fd;
 
-		fd = RETRACE_GET_REAL(fileno)(ret);
+		fd = real_fileno(ret);
 
 		file_descriptor_update(
                         fd, FILE_DESCRIPTOR_TYPE_FILE, file, 0);
@@ -306,15 +283,10 @@ FILE *RETRACE_IMPLEMENTATION(fopen)(const char *file, const char *mode)
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
-	trace_printf(1, "fopen(\"%s%s\", \"%s\"); [%d]\n",
-	    did_redirect ? redirect_file : file,
-	    did_redirect ? " [redirected]" : "",
-	    mode, fd);
-
 	return ret;
 }
 
-RETRACE_REPLACE(fopen)
+RETRACE_REPLACE(fopen, FILE *, (const char *file, const char *mode), (file, mode))
 
 int RETRACE_IMPLEMENTATION(close)(int fd)
 {
@@ -323,8 +295,6 @@ int RETRACE_IMPLEMENTATION(close)(int fd)
 	void const *parameter_values[] = {&fd};
 	rtr_close_t real_close;
 	int r;
-
-	real_close = RETRACE_GET_REAL(close);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "close";
@@ -344,17 +314,14 @@ int RETRACE_IMPLEMENTATION(close)(int fd)
 	return (r);
 }
 
-RETRACE_REPLACE(close)
+RETRACE_REPLACE(close, int, (int fd), (fd))
 
 int RETRACE_IMPLEMENTATION(dup)(int oldfd)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&oldfd};
-	rtr_dup_t real_dup;
 	int r;
-
-	real_dup = RETRACE_GET_REAL(dup);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dup";
@@ -372,19 +339,15 @@ int RETRACE_IMPLEMENTATION(dup)(int oldfd)
 	return (r);
 }
 
-RETRACE_REPLACE(dup)
+RETRACE_REPLACE(dup, int, (int oldfd), (oldfd))
 
 int RETRACE_IMPLEMENTATION(dup2)(int oldfd, int newfd)
 {
-
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&oldfd, &newfd};
 	rtr_dup2_t real_dup2;
 	int r;
-
-	real_dup2 = RETRACE_GET_REAL(dup2);
-
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dup2";
@@ -402,7 +365,7 @@ int RETRACE_IMPLEMENTATION(dup2)(int oldfd, int newfd)
 	return (r);
 }
 
-RETRACE_REPLACE(dup2)
+RETRACE_REPLACE(dup2, int, (int oldfd, int newfd), (oldfd, newfd))
 
 mode_t RETRACE_IMPLEMENTATION(umask)(mode_t mask)
 {
@@ -410,9 +373,6 @@ mode_t RETRACE_IMPLEMENTATION(umask)(mode_t mask)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT,  PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&mask};
 	mode_t old_mask;
-	rtr_umask_t real_umask;
-
-	real_umask = RETRACE_GET_REAL(umask);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "umask";
@@ -430,7 +390,7 @@ mode_t RETRACE_IMPLEMENTATION(umask)(mode_t mask)
 	return old_mask;
 }
 
-RETRACE_REPLACE(umask)
+RETRACE_REPLACE(umask, mode_t, (mode_t mask), (mask))
 
 int RETRACE_IMPLEMENTATION(mkfifo)(const char *pathname, mode_t mode)
 {
@@ -438,9 +398,6 @@ int RETRACE_IMPLEMENTATION(mkfifo)(const char *pathname, mode_t mode)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&pathname, &mode};
 	int ret;
-	rtr_mkfifo_t real_mkfifo;
-
-	real_mkfifo = RETRACE_GET_REAL(mkfifo);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "mkfifo";
@@ -458,48 +415,48 @@ int RETRACE_IMPLEMENTATION(mkfifo)(const char *pathname, mode_t mode)
 	return ret;
 }
 
-RETRACE_REPLACE(mkfifo)
+RETRACE_REPLACE(mkfifo, int, (const char *pathname, mode_t mode), (pathname, mode))
+
+#ifdef __APPLE__
+#define MODEFLAGS O_CREAT
+#else
+#define MODEFLAGS (O_CREAT | O_TMPFILE)
+#endif
+
+static int
+open_v(const char *pathname, int flags, va_list ap)
+{
+	if (flags & MODEFLAGS)
+		return real_open(pathname, flags, va_arg(ap, int));
+	return real_open(pathname, flags);
+}
 
 int RETRACE_IMPLEMENTATION(open)(const char *pathname, int flags, ...)
 {
-	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	int fd;
-	mode_t mode;
-	rtr_open_t real_open;
-	va_list arglist;
-	void const *parameter_values[] = {&pathname, &flags, &mode};
+	va_list ap;
 
-	real_open = RETRACE_GET_REAL(open);
+	va_start(ap, flags);
+	fd = open_v(pathname, flags, ap);
+	va_end(ap);
 
-	va_start(arglist, flags);
-	mode = va_arg(arglist, int);
-
-	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
-	event_info.function_name = "open";
-	event_info.parameter_types = parameter_types;
-	event_info.parameter_values = (void **) parameter_values;
-	event_info.return_value_type = PARAMETER_TYPE_FILE_DESCRIPTOR;
-	event_info.return_value = &fd;
-	retrace_event (&event_info);
-
-	fd = real_open(pathname, flags, mode);
+	if (flags & MODEFLAGS) {
+		va_start(ap, flags);
+		trace_printf(1, "open(%s, %u, %u) [return: fd]\n", pathname,
+		    flags, va_arg(ap, int), fd);
+		va_end(ap);
+	} else
+		trace_printf(1, "open(%s, %u) [return: fd]\n", pathname, flags, fd);
 
 	if (fd > 0) {
 		file_descriptor_update(
 			fd, FILE_DESCRIPTOR_TYPE_FILE, pathname, 0);
 	}
 
-
-	event_info.event_type = EVENT_TYPE_AFTER_CALL;
-	retrace_event (&event_info);
-
-	va_end(arglist);
-
 	return fd;
 }
 
-RETRACE_REPLACE(open)
+RETRACE_REPLACE_V(open, int, (const char *pathname, int flags, ...), flags, open_v, (pathname, flags, ap))
 
 size_t RETRACE_IMPLEMENTATION(fwrite)(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
@@ -507,9 +464,7 @@ size_t RETRACE_IMPLEMENTATION(fwrite)(const void *ptr, size_t size, size_t nmemb
 	unsigned int parameter_types[] = {PARAMETER_TYPE_MEM_BUFFER_ARRAY, PARAMETER_TYPE_INT, PARAMETER_TYPE_INT, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&size, &nmemb, &ptr, &size, &nmemb, &stream};
 	int r;
-	rtr_fwrite_t real_fwrite;
-
-	real_fwrite = RETRACE_GET_REAL(fwrite);
+	struct descriptor_info *di = NULL;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fwrite";
@@ -527,7 +482,7 @@ size_t RETRACE_IMPLEMENTATION(fwrite)(const void *ptr, size_t size, size_t nmemb
 	return r;
 }
 
-RETRACE_REPLACE(fwrite)
+RETRACE_REPLACE(fwrite, size_t, (const void *ptr, size_t size, size_t nmemb, FILE *stream), (ptr, size, nmemb, stream))
 
 size_t RETRACE_IMPLEMENTATION(fread)(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
@@ -535,10 +490,6 @@ size_t RETRACE_IMPLEMENTATION(fread)(void *ptr, size_t size, size_t nmemb, FILE 
 	unsigned int parameter_types[] = {PARAMETER_TYPE_MEM_BUFFER_ARRAY, PARAMETER_TYPE_INT, PARAMETER_TYPE_INT, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&size, &nmemb, &ptr, &size, &nmemb, &stream};
 	int r;
-	rtr_fread_t real_fread;
-
-	real_fread	= RETRACE_GET_REAL(fread);
-
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fread";
@@ -556,7 +507,7 @@ size_t RETRACE_IMPLEMENTATION(fread)(void *ptr, size_t size, size_t nmemb, FILE 
 	return r;
 }
 
-RETRACE_REPLACE(fread)
+RETRACE_REPLACE(fread, size_t, (void *ptr, size_t size, size_t nmemb, FILE *stream), (ptr, size, nmemb, stream))
 
 int RETRACE_IMPLEMENTATION(fputc)(int c, FILE *stream)
 {
@@ -564,9 +515,6 @@ int RETRACE_IMPLEMENTATION(fputc)(int c, FILE *stream)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&c, &stream};
 	int r;
-	rtr_fputc_t real_fputc;
-
-	real_fputc	= RETRACE_GET_REAL(fputc);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fputc";
@@ -584,7 +532,7 @@ int RETRACE_IMPLEMENTATION(fputc)(int c, FILE *stream)
 	return r;
 }
 
-RETRACE_REPLACE(fputc)
+RETRACE_REPLACE(fputc, int, (int c, FILE *stream), (c, stream))
 
 int RETRACE_IMPLEMENTATION(fputs)(const char *s, FILE *stream)
 {
@@ -592,9 +540,6 @@ int RETRACE_IMPLEMENTATION(fputs)(const char *s, FILE *stream)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&s, &stream};
 	int r;
-	rtr_fputs_t real_fputs;
-
-	real_fputs	= RETRACE_GET_REAL(fputs);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fputs";
@@ -612,7 +557,7 @@ int RETRACE_IMPLEMENTATION(fputs)(const char *s, FILE *stream)
 	return r;
 }
 
-RETRACE_REPLACE(fputs)
+RETRACE_REPLACE(fputs, int, (const char *s, FILE *stream), (s, stream))
 
 int RETRACE_IMPLEMENTATION(fgetc)(FILE *stream)
 {
@@ -620,9 +565,6 @@ int RETRACE_IMPLEMENTATION(fgetc)(FILE *stream)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream};
 	int r;
-	rtr_fgetc_t real_fgetc;
-
-	real_fgetc      = RETRACE_GET_REAL(fgetc);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fgetc";
@@ -640,16 +582,13 @@ int RETRACE_IMPLEMENTATION(fgetc)(FILE *stream)
 	return r;
 }
 
-RETRACE_REPLACE(fgetc)
+RETRACE_REPLACE(fgetc, int, (FILE *stream), (stream))
 
 void RETRACE_IMPLEMENTATION(strmode)(int mode, char *bp)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&mode, &bp};
-	rtr_strmode_t real_strmode;
-
-	real_strmode = RETRACE_GET_REAL(strmode);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "strmode";
@@ -662,8 +601,6 @@ void RETRACE_IMPLEMENTATION(strmode)(int mode, char *bp)
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
-
-	trace_printf(1, "strmode(%d, \"%s\");\n", mode, bp);
 }
 
-RETRACE_REPLACE(strmode)
+RETRACE_REPLACE(strmode, void, (int mode, char *bp), (mode, bp))

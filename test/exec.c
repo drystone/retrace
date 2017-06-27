@@ -6,7 +6,6 @@ int main(void)
 	char *env[] = { "VAR1=VALUE", "VAR2=VALUE2",  "TEST=TESTVALUE", NULL};
 	char *args[] = {"param1", "param2", "param3", NULL};
 
-
 	system("/bin/false");
 
 	execl("/bin/shouldntexitinanysystem", "/bin/false", "parameter1", (char *) NULL);

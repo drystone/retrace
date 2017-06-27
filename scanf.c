@@ -36,14 +36,11 @@
 int
 RETRACE_IMPLEMENTATION(scanf)(const char *format, ...)
 {
-	rtr_vscanf_t real_vscanf;
 	va_list ap;
 	int result;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&format, &ap};
-
-	real_vscanf = RETRACE_GET_REAL(vscanf);
 
 	va_start(ap, format);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -68,19 +65,17 @@ RETRACE_IMPLEMENTATION(scanf)(const char *format, ...)
 	return result;
 }
 
-RETRACE_REPLACE(scanf)
+RETRACE_REPLACE_V(scanf, int, (const char *format, ...), format, vscanf,
+	(format, ap))
 
 int
 RETRACE_IMPLEMENTATION(fscanf)(FILE *stream, const char *format, ...)
 {
-	rtr_vfscanf_t real_vfscanf;
 	va_list ap;
 	int result;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream, &format, &ap};
-
-	real_vfscanf = RETRACE_GET_REAL(vfscanf);
 
 	va_start(ap, format);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -105,19 +100,17 @@ RETRACE_IMPLEMENTATION(fscanf)(FILE *stream, const char *format, ...)
 	return result;
 }
 
-RETRACE_REPLACE(fscanf)
+RETRACE_REPLACE_V(fscanf, int, (FILE *stream, const char *format, ...),
+	format, vfscanf, (stream, format, ap))
 
 int
 RETRACE_IMPLEMENTATION(sscanf)(const char *str, const char *format, ...)
 {
-	rtr_vsscanf_t real_vsscanf;
 	va_list ap;
 	int result;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &format, &ap};
-
-	real_vsscanf = RETRACE_GET_REAL(vsscanf);
 
 	va_start(ap, format);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -141,19 +134,16 @@ RETRACE_IMPLEMENTATION(sscanf)(const char *str, const char *format, ...)
 	return result;
 }
 
-RETRACE_REPLACE(sscanf)
+RETRACE_REPLACE_V(sscanf, int, (const char *str, const char *format, ...), format, vsscanf, (str, format, ap))
 
 int
 RETRACE_IMPLEMENTATION(vscanf)(const char *format, va_list ap)
 {
-	rtr_vscanf_t real_vscanf;
 	va_list ap1;
 	int result;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&format, &ap1};
-
-	real_vscanf = RETRACE_GET_REAL(vscanf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -177,19 +167,16 @@ RETRACE_IMPLEMENTATION(vscanf)(const char *format, va_list ap)
 	return result;
 }
 
-RETRACE_REPLACE(vscanf)
+RETRACE_REPLACE(vscanf, int, (const char *format, va_list ap), (format, ap))
 
 int
 RETRACE_IMPLEMENTATION(vsscanf)(const char *str, const char *format, va_list ap)
 {
-	rtr_vsscanf_t real_vsscanf;
 	va_list ap1;
 	int result;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &format, &ap1};
-
-	real_vsscanf = RETRACE_GET_REAL(vsscanf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -213,19 +200,18 @@ RETRACE_IMPLEMENTATION(vsscanf)(const char *str, const char *format, va_list ap)
 	return result;
 }
 
-RETRACE_REPLACE(vsscanf)
+RETRACE_REPLACE(vsscanf, int, (const char *str, const char *format, va_list ap),
+	(str, format, ap))
+
 
 int
 RETRACE_IMPLEMENTATION(vfscanf)(FILE *stream, const char *format, va_list ap)
 {
-	rtr_vfscanf_t real_vfscanf;
 	va_list ap1;
 	int result;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream, &format, &ap1};
-
-	real_vfscanf = RETRACE_GET_REAL(vfscanf);
 
 	__va_copy(ap1, ap);
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -249,4 +235,5 @@ RETRACE_IMPLEMENTATION(vfscanf)(FILE *stream, const char *format, va_list ap)
 	return result;
 }
 
-RETRACE_REPLACE(vfscanf)
+RETRACE_REPLACE(vfscanf, int, (FILE *stream, const char *format, va_list ap),
+	(stream, format, ap))

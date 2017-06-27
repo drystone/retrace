@@ -33,9 +33,6 @@ FILE *RETRACE_IMPLEMENTATION(popen)(const char *command, const char *type)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING,  PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&command, &type};
 	FILE *ret;
-	rtr_popen_t real_popen;
-
-	real_popen	= RETRACE_GET_REAL(popen);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "popen";
@@ -53,7 +50,9 @@ FILE *RETRACE_IMPLEMENTATION(popen)(const char *command, const char *type)
 	return ret;
 }
 
-RETRACE_REPLACE(popen)
+RETRACE_REPLACE(popen, FILE *, (const char *command, const char *type),
+	(command, type))
+
 
 int RETRACE_IMPLEMENTATION(pclose)(FILE *stream)
 {
@@ -61,9 +60,6 @@ int RETRACE_IMPLEMENTATION(pclose)(FILE *stream)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&stream};
 	int ret;
-	rtr_pclose_t real_pclose;
-
-	real_pclose = RETRACE_GET_REAL(pclose);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "pclose";
@@ -81,4 +77,4 @@ int RETRACE_IMPLEMENTATION(pclose)(FILE *stream)
 	return ret;
 }
 
-RETRACE_REPLACE(pclose)
+RETRACE_REPLACE(pclose, int, (FILE *stream), (stream))

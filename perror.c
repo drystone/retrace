@@ -31,9 +31,6 @@ void RETRACE_IMPLEMENTATION(perror)(const char *s)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&s};
-	rtr_perror_t real_perror;
-
-	real_perror = RETRACE_GET_REAL(perror);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "perror";
@@ -48,4 +45,4 @@ void RETRACE_IMPLEMENTATION(perror)(const char *s)
 	retrace_event (&event_info);
 }
 
-RETRACE_REPLACE(perror)
+RETRACE_REPLACE(perror, void, (const char *s), (s))

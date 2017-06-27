@@ -33,10 +33,7 @@ int RETRACE_IMPLEMENTATION(system)(const char *command)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&command};
-	rtr_system_t real_system;
 	int r;
-
-	real_system = RETRACE_GET_REAL(system);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "system";
@@ -54,39 +51,31 @@ int RETRACE_IMPLEMENTATION(system)(const char *command)
 	return (r);
 }
 
-RETRACE_REPLACE(system)
+RETRACE_REPLACE(system, int, (const char *command), (command))
 
-int RETRACE_IMPLEMENTATION(execl)(const char *path, const char *arg0, ... /*, (char *)0 */)
+int
+execl_v(const char *path, const char *arg0, va_list ap)
 {
-	int i = 0;
-	int argsize = 2;
-	const char **argv;
-	char *p = NULL;
-	rtr_execv_t real_execv;
-	va_list arglist;
-	int r;
+	va_list ap_copy;
+	int nargs, i, r, old_trace_state;
+	char **args;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
-	void const *parameter_values[] = {&path, &argv};
+	void const *parameter_values[] = {&path, &args};
 
-	real_execv = RETRACE_GET_REAL(execv);
+	old_trace_state = trace_disable();
 
-	va_start(arglist, arg0);
+	va_copy(ap_copy, ap);
+	for (nargs = 2; va_arg(ap_copy, char *) != NULL; ++nargs)
+		;
+	va_end(ap_copy);
 
-	while ((p = va_arg(arglist, char *)) != NULL)
-		argsize++;
+	args = alloca(nargs * sizeof(void *));
+	args[0] = (char *)arg0;
+	for (i = 1; i < nargs; i++)
+		args[i] = va_arg(ap, char *);
 
-	va_end(arglist);
-
-	argv = RETRACE_GET_REAL(malloc)(argsize * sizeof(char *));
-
-	va_start(arglist, arg0);
-
-	argv[i] = arg0;
-	argv[argsize - 1] = NULL;
-	while ((p = va_arg(arglist, char *))) {
-		argv[++i] = p;
-	}
+	trace_restore(old_trace_state);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "execl";
@@ -96,30 +85,35 @@ int RETRACE_IMPLEMENTATION(execl)(const char *path, const char *arg0, ... /*, (c
 	event_info.return_value = &r;
 	retrace_event (&event_info);
 
-	va_end(arglist);
-
-	r = real_execv(path, (char *const *)argv);
+	r = real_execv(path, args);
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
-	RETRACE_GET_REAL(free)(argv);
+	return (r);
+}
+
+int RETRACE_IMPLEMENTATION(execl)(const char *path, const char *arg0, ... /*, (char *)0 */)
+{
+	int r;
+	char *parg;
+	va_list ap;
+
+	va_start(ap, arg0);
+	r = execl_v(path, arg0, ap);
+	va_end(ap);
 
 	return (r);
 }
 
-RETRACE_REPLACE(execl)
+RETRACE_REPLACE_V(execl, int, (const char *path, const char *arg0, ...), arg0, execl_v, (path, arg0, ap))
 
 int RETRACE_IMPLEMENTATION(execv)(const char *path, char *const argv[])
 {
-	rtr_execv_t real_execv;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&path, &argv};
-
-
-	real_execv = RETRACE_GET_REAL(execv);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "execv";
@@ -137,47 +131,37 @@ int RETRACE_IMPLEMENTATION(execv)(const char *path, char *const argv[])
 	return (r);
 }
 
-RETRACE_REPLACE(execv)
+RETRACE_REPLACE(execv, int, (const char *path, char *const argv[]), (path, argv))
 
-int RETRACE_IMPLEMENTATION(execle)(const char *path,
-		const char *arg0,
-		... /*, (char *)0, char *const envp[]*/)
+
+int
+execle_v(const char *path, const char *arg0, va_list ap)
 {
-	int argsize = 2;
-	int i = 0;
-	const char **argv;
-	char *const *envp;
-	char *p = NULL;
-	rtr_execve_t real_execve;
-	va_list arglist;
-	int r;
+	va_list ap_copy;
+	int nargs, i, r, old_trace_state;
+	char **args;
+	char **envp;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
-	void const *parameter_values[] = {&path, &argv, &envp};
+	void const *parameter_values[] = {&path, &args, &envp};
 
+	old_trace_state = trace_disable();
 
-	real_execve = RETRACE_GET_REAL(execve);
+	va_copy(ap_copy, ap);
+	for (nargs = 2; va_arg(ap_copy, char *) != NULL; ++nargs)
+		;
 
-	va_start(arglist, arg0);
+	envp = va_arg(ap_copy, char **);
 
-	while ((p = va_arg(arglist, char *)) != NULL)
-		argsize++;
+	va_end(ap_copy);
 
-	argv = RETRACE_GET_REAL(malloc)(argsize * sizeof(char *));
+	va_copy(ap_copy, ap);
+	args = alloca(nargs * sizeof(void *));
+	args[0] = (char *)arg0;
+	for (i = 1; i < nargs; i++)
+		args[i] = va_arg(ap, char *);
 
-	va_start(arglist, arg0);
-
-	argv[i] = arg0;
-	argv[argsize - 1] = NULL;
-
-	while ((p = va_arg(arglist, char *)) != NULL) {
-		argv[++i] = p;
-	}
-
-	envp = va_arg(arglist, char **);
-
-	va_end(arglist);
-
+	trace_restore(old_trace_state);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "execle";
@@ -185,28 +169,39 @@ int RETRACE_IMPLEMENTATION(execle)(const char *path,
 	event_info.parameter_values = (void **) parameter_values;
 	event_info.return_value_type = PARAMETER_TYPE_INT;
 	event_info.return_value = &r;
+	retrace_event (&event_info);
 
-	r = real_execve(path, (char *const *)argv, envp);
+	r = real_execve(path, args, envp);
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
-	RETRACE_GET_REAL(free)(argv);
+	return (r);
+}
+
+int RETRACE_IMPLEMENTATION(execle)(const char *path,
+		const char *arg0,
+		... /*, (char *)0, char *const envp[]*/)
+{
+	int r;
+	const char *parg, *penv;
+	va_list ap;
+
+	va_start(ap, arg0);
+	r = execle_v(path, arg0, ap);
+	va_end(ap);
 
 	return (r);
 }
 
-RETRACE_REPLACE(execle)
+RETRACE_REPLACE_V(execle, int, (const char *path, const char *arg0, ...), arg0, execle_v, (path, arg0, ap))
 
 int RETRACE_IMPLEMENTATION(execve)(const char *path, char *const argv[], char *const envp[])
 {
-	rtr_execve_t real_execve;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&path, &argv, &envp};
-
-	real_execve = RETRACE_GET_REAL(execve);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "execve";
@@ -224,71 +219,55 @@ int RETRACE_IMPLEMENTATION(execve)(const char *path, char *const argv[], char *c
 	return (r);
 }
 
-RETRACE_REPLACE(execve)
+RETRACE_REPLACE(execve, int, (const char *path, char *const argv[], char *const envp[]), (path, argv, envp))
+
+
+int
+execlp_v(const char *file, const char *arg0, va_list ap)
+{
+	va_list ap_copy;
+	int nargs, i, r, old_trace_state;
+	char **args;
+
+	old_trace_state = trace_disable();
+
+	va_copy(ap_copy, ap);
+	for (nargs = 2; va_arg(ap_copy, char *) != NULL; ++nargs)
+		;
+	va_end(ap_copy);
+
+	args = alloca(nargs * sizeof(void *));
+	args[0] = (char *)arg0;
+	for (i = 1; i < nargs; i++)
+		args[i] = va_arg(ap, char *);
+	r = real_execvp(file, args);
+
+	trace_restore(old_trace_state);
+	return (r);
+}
 
 int RETRACE_IMPLEMENTATION(execlp)(const char *file, const char *arg0, ... /*, (char *)0 */)
 {
-	int argsize = 2;
-	int i = 0;
 	int r;
-	const char **argv;
-	char *p = NULL;
-	rtr_execvp_t real_execvp;
-	va_list arglist;
-	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
-	void const *parameter_values[] = {&file, &argv};
+	char *parg;
+	va_list ap;
 
-	real_execvp = RETRACE_GET_REAL(execvp);
-
-	va_start(arglist, arg0);
-
-	while ((p = va_arg(arglist, char *)) != NULL)
-		argsize++;
-
-	argv = RETRACE_GET_REAL(malloc)(argsize * sizeof(char *));
-
-	va_start(arglist, arg0);
-
-	argv[i] = arg0;
-	argv[argsize - 1] = NULL;
-
-	while ((p = va_arg(arglist, char *))) {
-		argv[++i] = p;
-	}
-
-
-	va_end(arglist);
-
-	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
-	event_info.function_name = "execlp";
-	event_info.parameter_types = parameter_types;
-	event_info.parameter_values = (void **) parameter_values;
-	event_info.return_value_type = PARAMETER_TYPE_INT;
-	event_info.return_value = &r;
-	retrace_event (&event_info);
-
-	r = real_execvp(file, (char *const *)argv);
-
-	event_info.event_type = EVENT_TYPE_AFTER_CALL;
-	retrace_event (&event_info);
-
-	RETRACE_GET_REAL(free)(argv);
+	va_start(ap, arg0);
+	r = execlp_v(file, arg0, ap);
+	va_end(ap);
 
 	return (r);
 }
 
-RETRACE_REPLACE(execlp)
+RETRACE_REPLACE_V(execlp, int, (const char *file, const char *arg0, ...), arg0, execlp_v, (file, arg0, ap))
+
 
 int RETRACE_IMPLEMENTATION(execvp)(const char *file, char *const argv[])
 {
-	rtr_execvp_t real_execvp;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&file, &argv};
-
-	real_execvp = RETRACE_GET_REAL(execvp);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "execvp";
@@ -303,22 +282,19 @@ int RETRACE_IMPLEMENTATION(execvp)(const char *file, char *const argv[])
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
-
 	return (r);
 }
 
-RETRACE_REPLACE(execvp)
+RETRACE_REPLACE(execvp, int, (const char *file, char *const argv[]), (file, argv))
+
 
 #ifndef __APPLE__
 int RETRACE_IMPLEMENTATION(execvpe)(const char *file, char *const argv[], char *const envp[])
 {
-	rtr_execvpe_t real_execvpe;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&file, &argv, &envp};
-
-	real_execvpe = RETRACE_GET_REAL(execvpe);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "execvpe";
@@ -336,12 +312,12 @@ int RETRACE_IMPLEMENTATION(execvpe)(const char *file, char *const argv[], char *
 	return (r);
 }
 
-RETRACE_REPLACE(execvpe)
+RETRACE_REPLACE(execvpe, int, (const char *file, char *const argv[], char *const envp[]), (file, argv, envp))
+
 
 int RETRACE_IMPLEMENTATION(execveat)(int dirfd, const char *pathname,
 		char *const argv[], char *const envp[], int flags)
 {
-	rtr_execveat_t real_execveat;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR,
@@ -351,8 +327,6 @@ int RETRACE_IMPLEMENTATION(execveat)(int dirfd, const char *pathname,
 					  PARAMETER_TYPE_INT,
 					  PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&dirfd, &pathname, &argv, &envp, &flags};
-
-	real_execveat = RETRACE_GET_REAL(execveat);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "execveat";
@@ -370,17 +344,18 @@ int RETRACE_IMPLEMENTATION(execveat)(int dirfd, const char *pathname,
 	return (r);
 }
 
-RETRACE_REPLACE(execveat)
+RETRACE_REPLACE(execveat, int,
+	(int dirfd, const char *pathname, char *const argv[],
+	    char *const envp[], int flags),
+	(dirfd, pathname, argv, envp, flags))
+
 
 int RETRACE_IMPLEMENTATION(fexecve)(int fd, char *const argv[], char *const envp[])
 {
-	rtr_fexecve_t real_fexecve;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_STRING_ARRAY, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &argv, &envp};
-
-	real_fexecve = RETRACE_GET_REAL(fexecve);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "fexecve";
@@ -398,6 +373,7 @@ int RETRACE_IMPLEMENTATION(fexecve)(int fd, char *const argv[], char *const envp
 	return r;
 }
 
-RETRACE_REPLACE(fexecve)
+RETRACE_REPLACE(fexecve, int,
+	(int fd, char *const argv[], char *const envp[]), (fd, argv, envp))
 
 #endif /* !__APPLE__ */

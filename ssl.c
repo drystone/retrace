@@ -107,13 +107,10 @@ print_ssl_keys(void *_ssl)
 
 int RETRACE_IMPLEMENTATION(SSL_write)(SSL *ssl, const void *buf, int num)
 {
-	rtr_SSL_write_t real_SSL_write;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&ssl, &num, &buf, &num};
-
-	real_SSL_write = RETRACE_GET_REAL(SSL_write);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "SSL_write";
@@ -131,17 +128,16 @@ int RETRACE_IMPLEMENTATION(SSL_write)(SSL *ssl, const void *buf, int num)
 	return (r);
 }
 
-RETRACE_REPLACE(SSL_write)
+RETRACE_REPLACE(SSL_write, int, (SSL * ssl, const void *buf, int num),
+	(ssl, buf, num))
+
 
 int RETRACE_IMPLEMENTATION(SSL_read)(SSL *ssl, void *buf, int num)
 {
-	rtr_SSL_read_t real_SSL_read;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&ssl, &r, &buf, &num};
-
-	real_SSL_read = RETRACE_GET_REAL(SSL_read);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "SSL_read";
@@ -159,17 +155,16 @@ int RETRACE_IMPLEMENTATION(SSL_read)(SSL *ssl, void *buf, int num)
 	return (r);
 }
 
-RETRACE_REPLACE(SSL_read)
+RETRACE_REPLACE(SSL_read, int, (SSL * ssl, void *buf, int num),
+	(ssl, buf, num))
+
 
 int RETRACE_IMPLEMENTATION(SSL_connect)(SSL *ssl)
 {
-	rtr_SSL_connect_t real_SSL_connect;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL_WITH_KEY, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&ssl};
-
-	real_SSL_connect = RETRACE_GET_REAL(SSL_connect);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "SSL_connect";
@@ -187,18 +182,16 @@ int RETRACE_IMPLEMENTATION(SSL_connect)(SSL *ssl)
 	return (r);
 }
 
-RETRACE_REPLACE(SSL_connect)
+RETRACE_REPLACE(SSL_connect, int, (SSL * ssl), (ssl))
+
 
 
 int RETRACE_IMPLEMENTATION(SSL_accept)(SSL *ssl)
 {
-	rtr_SSL_accept_t real_SSL_accept;
 	int r;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL_WITH_KEY, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&ssl};
-
-	real_SSL_accept = RETRACE_GET_REAL(SSL_accept);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "SSL_accept";
@@ -216,19 +209,17 @@ int RETRACE_IMPLEMENTATION(SSL_accept)(SSL *ssl)
 	return (r);
 }
 
-RETRACE_REPLACE(SSL_accept)
+RETRACE_REPLACE(SSL_accept, int, (SSL * ssl), (ssl))
+
 
 long
 RETRACE_IMPLEMENTATION(SSL_get_verify_result)(const SSL *ssl)
 {
-	rtr_SSL_get_verify_result_t real_SSL_get_verify_result;
 	int r;
 	int redirect_id = 0;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_SSL, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&ssl};
-
-	real_SSL_get_verify_result = RETRACE_GET_REAL(SSL_get_verify_result);
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "SSL_get_verify_result";
@@ -255,13 +246,13 @@ RETRACE_IMPLEMENTATION(SSL_get_verify_result)(const SSL *ssl)
 	return r;
 }
 
-RETRACE_REPLACE(SSL_get_verify_result)
+RETRACE_REPLACE(SSL_get_verify_result, long, (const SSL * ssl), (ssl))
+
 
 #define DEFINE_TO_STR(def, str) case (def): str = #def; break;
 
 long RETRACE_IMPLEMENTATION(BIO_ctrl)(BIO *bp, int cmd, long larg, void *parg)
 {
-	rtr_BIO_ctrl_t real_BIO_ctrl;
 	long r;
 	SSL *ssl = NULL;
 	char *cmd_str;
@@ -273,9 +264,6 @@ long RETRACE_IMPLEMENTATION(BIO_ctrl)(BIO *bp, int cmd, long larg, void *parg)
 					  PARAMETER_TYPE_END,   /* index 4 see below in case this changes*/
 					  PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&bp, &cmd, &cmd_str, &larg, &parg, &ssl};
-
-
-	real_BIO_ctrl = RETRACE_GET_REAL(BIO_ctrl);
 
 	switch (cmd) {
 #ifdef BIO_CTRL_RESET
@@ -616,4 +604,5 @@ long RETRACE_IMPLEMENTATION(BIO_ctrl)(BIO *bp, int cmd, long larg, void *parg)
 	return (r);
 }
 
-RETRACE_REPLACE(BIO_ctrl)
+RETRACE_REPLACE(BIO_ctrl, long, (BIO * bp, int cmd, long larg, void *parg),
+	(bp, cmd, larg, parg))
