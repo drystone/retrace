@@ -33,7 +33,6 @@ int RETRACE_IMPLEMENTATION(setuid)(uid_t uid)
   	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void *parameter_values[] = {&uid};
-	rtr_setuid_t real_setuid;
 	int r;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -59,7 +58,6 @@ int RETRACE_IMPLEMENTATION(seteuid)(uid_t uid)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void *parameter_values[] = {&uid};
-	rtr_seteuid_t real_seteuid;
 	int r;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
@@ -85,7 +83,6 @@ int RETRACE_IMPLEMENTATION(setgid)(gid_t gid)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void *parameter_values[] = {&gid};
-	rtr_setgid_t real_setgid;
 	int r;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
