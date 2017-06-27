@@ -4,6 +4,7 @@
 ../retrace -f ../retrace.conf.example ./exit
 ../retrace -f ../retrace.conf.example ./file
 ../retrace -f ../retrace.conf.example ./fork
+../retrace -f ../retrace.conf.example ./getaddrinfo
 ../retrace -f ../retrace.conf.example ./id
 ../retrace -f ../retrace.conf.example ./malloc
 ../retrace -f ../retrace.conf.example ./pipe
