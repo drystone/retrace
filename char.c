@@ -42,8 +42,8 @@ RETRACE_IMPLEMENTATION(putc)(int c, FILE *stream)
 {
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_CHAR, PARAMETER_TYPE_FILE_STREAM, PARAMETER_TYPE_END};
-	void const *parameter_values[] = {&c, stream};
-	int r;
+	void const *parameter_values[] = {&c, &stream};
+	int r = 0;
 
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "putc";

@@ -60,8 +60,9 @@
 #define PARAMETER_TYPE_SSL_WITH_KEY	22 /* OpenSSL's SSL* but attempt to dump the ssl key */
 
 
-#define PARAMETER_FLAG_STRING_NEXT	0x80000000 /* There's a string parameter that describes the string */
-#define PARAMETER_FLAGS_ALL (PARAMETER_FLAG_STRING_NEXT)
+#define PARAMETER_FLAG_OUTPUT_VARIABLE		0x40000000 /* This is an output variable, is uninitialized in EVENT_TYPE_BEFORE_CALL */
+#define PARAMETER_FLAG_STRING_NEXT		0x80000000 /* There's a string parameter that describes the string */
+#define PARAMETER_FLAGS_ALL (PARAMETER_FLAG_STRING_NEXT | PARAMETER_FLAG_OUTPUT_VARIABLE)
 
 #define EVENT_TYPE_BEFORE_CALL		0
 #define EVENT_TYPE_AFTER_CALL		1

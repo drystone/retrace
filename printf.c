@@ -106,7 +106,6 @@ RETRACE_IMPLEMENTATION(dprintf)(int fd, const char *fmt, ...)
 	void const *parameter_values[] = {&fd, &fmt, &ap};
 
 	va_start(ap, fmt);
-
 	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
 	event_info.function_name = "dprintf";
 	event_info.parameter_types = parameter_types;
@@ -136,7 +135,7 @@ RETRACE_IMPLEMENTATION(sprintf)(char *str, const char *fmt, ...)
 	int result;
 	va_list ap;
 	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING | PARAMETER_FLAG_OUTPUT_VARIABLE, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &fmt, &ap};
 
 	va_start(ap, fmt);
@@ -169,7 +168,7 @@ RETRACE_IMPLEMENTATION(snprintf)(char *str, size_t size, const char *fmt, ...)
 	int result;
 	va_list ap;
 	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING | PARAMETER_FLAG_OUTPUT_VARIABLE, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &size, &fmt, &ap};
 
 	va_start(ap, fmt);
@@ -298,10 +297,10 @@ RETRACE_REPLACE(vdprintf, int, (int fd, const char *fmt, va_list ap), (fd, fmt, 
 int
 RETRACE_IMPLEMENTATION(vsprintf)(char *str, const char *fmt, va_list ap)
 {
-	int result;
+	int result = 0;
 	va_list ap1;
 	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING | PARAMETER_FLAG_OUTPUT_VARIABLE, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &fmt, &ap1};
 
 	__va_copy(ap1, ap);
@@ -315,7 +314,7 @@ RETRACE_IMPLEMENTATION(vsprintf)(char *str, const char *fmt, va_list ap)
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
-	result = real_vsprintf(str, fmt, ap);
+	result = real_vsprintf(str, fmt, ap1);
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
@@ -334,7 +333,7 @@ RETRACE_IMPLEMENTATION(vsnprintf)(char *str, size_t size, const char *fmt, va_li
 	int result;
 	va_list ap1;
 	struct rtr_event_info event_info;
-	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING | PARAMETER_FLAG_OUTPUT_VARIABLE, PARAMETER_TYPE_INT, PARAMETER_TYPE_PRINTF_FORMAT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&str, &size, &fmt, &ap1};
 
 	__va_copy(ap1, ap);
@@ -348,7 +347,7 @@ RETRACE_IMPLEMENTATION(vsnprintf)(char *str, size_t size, const char *fmt, va_li
 	va_end(ap1);
 
 	__va_copy(ap1, ap);
-	result = real_vsnprintf(str, size, fmt, ap);
+	result = real_vsnprintf(str, size, fmt, ap1);
 	va_end(ap1);
 
 	__va_copy(ap1, ap);

@@ -31,7 +31,7 @@ ssize_t RETRACE_IMPLEMENTATION(write)(int fd, const void *buf, size_t nbytes)
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &nbytes, &buf, &nbytes};
-	ssize_t ret;
+	ssize_t ret = 0;
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	event_info.function_name = "write";

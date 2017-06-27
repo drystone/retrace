@@ -102,7 +102,7 @@ struct descriptor_info **g_descriptor_list;
 unsigned int g_descriptor_list_size;
 
 void **
-retrace_print_parameter(unsigned int type, int flags, void **value)
+retrace_print_parameter(unsigned int event_type, unsigned int type, int flags, void **value)
 {
 	switch (type) {
 	case PARAMETER_TYPE_INT:
@@ -121,10 +121,15 @@ retrace_print_parameter(unsigned int type, int flags, void **value)
 		trace_printf(0, "%f", *((double *) *value));
 		break;
 	case PARAMETER_TYPE_STRING:
-		if ((*(char **) *value) != NULL)
-			trace_printf_str ((*(char **) *value));
-		else
-			trace_printf_str ("(nil)");
+
+		if (event_type == EVENT_TYPE_BEFORE_CALL && flags & PARAMETER_FLAG_OUTPUT_VARIABLE) {
+			trace_printf(0, "%p", (*(void **) *value));
+		} else {
+			if ((*(char **) *value) != NULL)
+				trace_printf_str ((*(char **) *value));
+			else
+				trace_printf_str ("(nil)");
+		}
 		break;
 	case PARAMETER_TYPE_STRING_LEN:
 		trace_printf_str ((*(char **) *value));
@@ -181,11 +186,13 @@ retrace_print_parameter(unsigned int type, int flags, void **value)
 		int fd = *((int *) *value);
 		struct descriptor_info *di;
 
-		di = file_descriptor_get(fd);
-
 		trace_printf(0, "%d", fd);
-		if (di && di->location) {
-			trace_printf(0, " [%s]", di->location);
+
+		if (event_type != EVENT_TYPE_BEFORE_CALL || (flags & PARAMETER_FLAG_OUTPUT_VARIABLE)) {
+			di = file_descriptor_get(fd);
+			if (di && di->location) {
+				trace_printf(0, " [%s]", di->location);
+			}
 		}
 
 
@@ -204,11 +211,11 @@ retrace_print_parameter(unsigned int type, int flags, void **value)
 		value++;
 		ap = (va_list *) *value;
 
-	        real_vsnprintf(buf, 1024, fmt, *ap);
+		real_vsnprintf(buf, 1024, fmt, *ap);
 		trace_printf(0, "\"");
 		trace_printf_str(fmt);
 		trace_printf(0, "\" -> \"");
-	        trace_printf_str(buf);
+		trace_printf_str(buf);
 		trace_printf(0, "\"");
 
 		break;
@@ -322,7 +329,8 @@ retrace_event (struct rtr_event_info *event_info)
 			    GET_PARAMETER_TYPE(*parameter_type) == PARAMETER_TYPE_SSL_WITH_KEY)
 				has_memory_buffers = 1;
 
-			parameter_value = retrace_print_parameter (GET_PARAMETER_TYPE(*parameter_type),
+			parameter_value = retrace_print_parameter (event_info->event_type,
+								   GET_PARAMETER_TYPE(*parameter_type),
 								   GET_PARAMETER_FLAGS(*parameter_type),
 								   parameter_value);
 			trace_printf(0, ", ");
@@ -335,7 +343,8 @@ retrace_event (struct rtr_event_info *event_info)
 		/* Return value is only valid in EVENT_TYPE_AFTER_CALL */
 		if (event_info->event_type == EVENT_TYPE_AFTER_CALL && event_info->return_value_type != PARAMETER_TYPE_END) {
 			trace_printf(0, " = ");
-			retrace_print_parameter (GET_PARAMETER_TYPE(event_info->return_value_type),
+			retrace_print_parameter (event_info->event_type,
+						 GET_PARAMETER_TYPE(event_info->return_value_type),
 						 GET_PARAMETER_FLAGS(event_info->return_value_type),
 						 &event_info->return_value);
 		}

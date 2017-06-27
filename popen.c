@@ -71,6 +71,7 @@ int RETRACE_IMPLEMENTATION(pclose)(FILE *stream)
 
 	ret = real_pclose(stream);
 
+	stream = NULL;
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
 
