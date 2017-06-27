@@ -32,9 +32,6 @@ ssize_t RETRACE_IMPLEMENTATION(write)(int fd, const void *buf, size_t nbytes)
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &nbytes, &buf, &nbytes};
 	ssize_t ret;
-	struct descriptor_info *di;
-
-	ret = real_write(fd, buf, nbytes);
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	event_info.function_name = "write";
@@ -45,11 +42,10 @@ ssize_t RETRACE_IMPLEMENTATION(write)(int fd, const void *buf, size_t nbytes)
 
 	retrace_event (&event_info);
 
+	ret = real_write(fd, buf, nbytes);
 
-	di = file_descriptor_get(fd);
-
-	if (di && di->location)
-		trace_printf(0, "\t[to %s]\n", di->location);
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 
 	return ret;
 }

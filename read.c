@@ -29,7 +29,6 @@
 ssize_t RETRACE_IMPLEMENTATION(read)(int fd, void *buf, size_t nbytes)
 {
 	ssize_t ret = 0;
-	struct descriptor_info *di;
 	struct rtr_event_info event_info;
 	unsigned int parameter_types[] = {PARAMETER_TYPE_FILE_DESCRIPTOR, PARAMETER_TYPE_MEMORY_BUFFER, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
 	void const *parameter_values[] = {&fd, &ret, &buf, &nbytes};
@@ -47,11 +46,6 @@ ssize_t RETRACE_IMPLEMENTATION(read)(int fd, void *buf, size_t nbytes)
 
 	event_info.event_type = EVENT_TYPE_AFTER_CALL;
 	retrace_event (&event_info);
-
-	di = file_descriptor_get(fd);
-
-	if (di && di->location)
-		trace_printf(0, "\t[to \"%s\"]\n",di->location);
 
 	return ret;
 }
