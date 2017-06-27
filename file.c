@@ -423,9 +423,36 @@ RETRACE_REPLACE(mkfifo, int, (const char *pathname, mode_t mode), (pathname, mod
 static int
 open_v(const char *pathname, int flags, va_list ap)
 {
+	int r;
+	mode_t mode = 0;
+	struct rtr_event_info event_info;
+	unsigned int parameter_types[] = {PARAMETER_TYPE_STRING, PARAMETER_TYPE_INT, PARAMETER_TYPE_INT, PARAMETER_TYPE_END};
+	void const *parameter_values[] = {&pathname, &flags, &mode};
+
 	if (flags & MODEFLAGS)
-		return real_open(pathname, flags, va_arg(ap, int));
-	return real_open(pathname, flags);
+		mode = va_arg(ap, int);
+
+	event_info.event_type = EVENT_TYPE_BEFORE_CALL;
+	event_info.function_name = "open";
+	event_info.parameter_types = parameter_types;
+	event_info.parameter_values = (void **) parameter_values;
+	event_info.return_value_type = PARAMETER_TYPE_INT;
+	event_info.return_value = &r;
+	retrace_event (&event_info);
+
+
+	if (flags & MODEFLAGS)
+		r = real_open(pathname, flags, mode);
+	else
+		r =  real_open(pathname, flags);
+
+	if (r > 0) {
+		file_descriptor_update(
+			r, FILE_DESCRIPTOR_TYPE_FILE, pathname, 0);
+	}
+
+	event_info.event_type = EVENT_TYPE_AFTER_CALL;
+	retrace_event (&event_info);
 }
 
 int RETRACE_IMPLEMENTATION(open)(const char *pathname, int flags, ...)
@@ -436,19 +463,6 @@ int RETRACE_IMPLEMENTATION(open)(const char *pathname, int flags, ...)
 	va_start(ap, flags);
 	fd = open_v(pathname, flags, ap);
 	va_end(ap);
-
-	if (flags & MODEFLAGS) {
-		va_start(ap, flags);
-		trace_printf(1, "open(%s, %u, %u) [return: fd]\n", pathname,
-		    flags, va_arg(ap, int), fd);
-		va_end(ap);
-	} else
-		trace_printf(1, "open(%s, %u) [return: fd]\n", pathname, flags, fd);
-
-	if (fd > 0) {
-		file_descriptor_update(
-			fd, FILE_DESCRIPTOR_TYPE_FILE, pathname, 0);
-	}
 
 	return fd;
 }
