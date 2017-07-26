@@ -17,13 +17,15 @@ enum rpc_function_id {
 
 struct rpc_[[name]] {
 	[[^is_void]]
-	[[rpctype]] rval;
+	[[rpctype]] result;
 	[[/is_void]]
+	[[#has_params]]
 	struct {
 		[[#params]]
 		[[rpctype]][[spacing]][[name]];
 		[[/params]]
 	} args;
+	[[/has_params]]
 };
 
 typedef [[type]](*rtr_[[name]]_t)([[#params]][[type]][[spacing]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]]);

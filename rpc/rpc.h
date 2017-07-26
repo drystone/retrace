@@ -12,14 +12,6 @@ enum rpc_call_type {
 	RPC_POSTCALL
 };
 
-enum rpc_type {
-	RPC_VOID,
-	RPC_PTR,
-	RPC_INT,
-	RPC_UINT,
-	RPC_STR
-};
-
 enum rpc_inout {
 	RPC_INPARAM,
 	RPC_OUTPARAM,

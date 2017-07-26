@@ -1,3 +1,30 @@
+/*
+ * Copyright (c) 2017, [Ribose Inc](https://www.ribose.com).
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "../config.h"
+
 #include <error.h>
 #include <string.h>
 #include <stdio.h>
@@ -5,32 +32,41 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+enum rpc_type {
+	RPC_VOID,
+	RPC_PTR,
+	RPC_INT,
+	RPC_UINT,
+	RPC_STR
+};
+
 struct type {
 	char *ctype;
 	char *rpctype;
-	char *rpctypenum;
+	enum rpc_type rpctypenum;
 	const char *header;
+	const char *format;
 } types[] = {
-	{"char *",	"char *",	"RPC_PTR",	NULL		},
-	{"const char *", "char *",	"RPC_STR",	NULL		},
-	{"DIR *",	"DIR *",	"RPC_PTR",	"dirent.h"	},
-	{"FILE *",	"FILE *",	"RPC_PTR",	"stdio.h"	},
-	{"int",		"int",		"RPC_INT",	NULL		},
-	{"pid_t",	"pid_t",	"RPC_UINT",	"sys/types.h"	},
-	{"size_t",	"size_t",	"RPC_UINT",	"stdlib.h"	},
-	{"ssize_t",	"ssize_t",	"RPC_INT",	"sys/types.h"	},
+	{"char *",	"char *",	RPC_PTR,	NULL,		"%p"},
+	{"const char *", "char *",	RPC_STR,	NULL,		"%p"},
+	{"DIR *",	"DIR *",	RPC_PTR,	"dirent.h",	"%p"},
+	{"FILE *",	"FILE *",	RPC_PTR,	"stdio.h",	"%p"},
+	{"int",		"int",		RPC_INT,	NULL,		"%d"},
+	{"pid_t",	"pid_t",	RPC_UINT,	"sys/types.h",	"%d"},
+	{"size_t",	"size_t",	RPC_UINT,	"stdlib.h",	"%lu"},
+	{"ssize_t",	"ssize_t",	RPC_INT,	"sys/types.h",	"%ld"},
 	{"struct dirent *",
 			"struct dirent*",
-					"RPC_PTR",	"dirent.h"	},
+					RPC_PTR,	"dirent.h",	"%p"},
 	{"struct dirent **",
 			"struct dirent**",
-					"RPC_PTR",	"dirent.h"	},
-	{"va_list",	"void *",	"RPC_PTR",	"stdarg.h"	},
-	{"void",	NULL,		"RPC_VOID",	NULL		},
-	{"void *",	"void *",	"RPC_PTR",	NULL		},
+					RPC_PTR,	"dirent.h",	"%p"},
+	{"va_list",	"void *",	RPC_PTR,	"stdarg.h",	"%p"},
+	{"void",	NULL,		RPC_VOID,	NULL,		NULL},
+	{"void *",	"void *",	RPC_PTR,	NULL,		"%p"},
 	{"const void *",
-			"void *",	"RPC_PTR",	NULL		},
-	{NULL,		NULL,		NULL,		NULL		}
+			"void *",	RPC_PTR,	NULL,		"%p"},
+	{NULL,		NULL,		RPC_VOID,	NULL,		NULL}
 };
 
 struct param {
@@ -52,7 +88,6 @@ STAILQ_HEAD(header_list, header);
 struct function {
 	STAILQ_ENTRY(function) next;
 	char *name;
-	unsigned int num_params;
 	struct type *type;
 	struct param_list params;
 	char *va_fn;
@@ -60,7 +95,26 @@ struct function {
 
 STAILQ_HEAD(function_list, function);
 
-void *check_alloc(void *p)
+const char *
+rpc_typename(enum rpc_type type)
+{
+	switch (type) {
+	case RPC_VOID:
+		return "RPC_VOID";
+	case RPC_PTR:
+		return "RPC_PTR";
+	case RPC_INT:
+		return "RPC_INT";
+	case RPC_UINT:
+		return "RPC_UINT";
+	case RPC_STR:
+		return "RPC_STR";
+	}
+	return NULL;
+}
+
+void
+*check_alloc(void *p)
 {
 	if (p == NULL)
 		error(1, 0, "Out of memory.");
@@ -158,10 +212,19 @@ void yaml(struct function_list *fns)
 	char *ucname, *p;
 	struct header_list headers;
 	struct header *header;
+	int num_params, has_data;
 
 	printf("---\n");
 	printf("functions:\n");
 	STAILQ_FOREACH(function, fns, next) {
+		num_params = 0;
+		has_data = 0;
+		STAILQ_FOREACH(param, &(function->params), next) {
+			if (param->type->rpctypenum == RPC_STR)
+				has_data = 1;
+			++num_params;
+		}
+
 		ucname = check_alloc(strdup(function->name));
 		for (p = ucname; *p; ++p)
 			*p = toupper(*p);
@@ -169,30 +232,37 @@ void yaml(struct function_list *fns)
 		printf("- name: %s\n", function->name);
 		printf("  enum: RPC_%s\n", ucname);
 		printf("  type: %s\n", function->type->ctype);
-		printf("  rpctypenum: %s\n", function->type->rpctypenum);
 		if (function->type->rpctype) {
 			printf("  rpctype: %s\n", function->type->rpctype);
-			if (!strcmp(function->type->rpctypenum, "RPC_STR"))
+			printf("  format: \"%s\"\n", function->type->format);
+			if (function->type->rpctypenum == RPC_STR)
 				printf("  is_string: true\n");
 		} else
 			printf("  is_void: true\n");
-		printf("  paramcount: %d\n", function->num_params);
+		printf("  has_params: %s\n", num_params ? "true" : "false");
+		printf("  has_data: %s\n", has_data ? "true" : "false");
+		printf("  paramcount: %d\n", num_params);
 
 		if (function->va_fn != NULL) {
 			printf("  variadic:\n");
 			printf("    function: %s\n", function->va_fn);
-			printf("    start: %s\n", last_parameter_name(&(function->params)));
+			printf("    start: %s\n",
+			    last_parameter_name(&(function->params)));
 		}
 		if (!STAILQ_EMPTY(&(function->params))) {
 			printf("  params:\n");
 			STAILQ_FOREACH(param, &(function->params), next) {
 				printf("  - name: %s\n", param->name);
 				printf("    type: %s\n", param->type->ctype);
-				printf("    rpctype: %s\n", param->type->rpctype);
-				printf("    rpctypenum: %s\n", param->type->rpctypenum);
+				printf("    rpctype: %s\n",
+				    param->type->rpctype);
 				printf("    inout: %s\n", param->inout);
-				printf("    spacing: %s\n", strchr(param->type->ctype, '*') ? "\"\"" : "\" \"");
-				if (!strcmp(param->type->rpctypenum, "RPC_STR"))
+				printf("    spacing: %s\n",
+				    strchr(param->type->ctype, '*')
+				    ? "\"\"" : "\" \"");
+				printf("    format: \"%s\"\n",
+				    param->type->format);
+				if (param->type->rpctypenum == RPC_STR)
 					printf("    is_string: true\n");
 				if (!STAILQ_NEXT(param, next))
 					printf("    last: true\n");
@@ -264,7 +334,6 @@ int main(void)
 			fn->name = check_alloc(strdup(tok));
 			fn->type = get_type(line);
 		} else if (strcmp(tok, "parameter") == 0) {
-			++fn->num_params;
 			add_parameter(line, &(fn->params));
 		} else if (strcmp(tok, "variadic") == 0) {
 			if (fn->va_fn != NULL)

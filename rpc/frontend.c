@@ -36,9 +36,10 @@
 
 #include "rpc.h"
 #include "frontend.h"
-#include "inspect.h"
 
 #define IOBUFLEN 64 * 1024
+
+extern retrace_handler_t g_handlers[];
 
 struct retrace_handle *
 retrace_start(char *const argv[])
@@ -105,8 +106,6 @@ retrace_trace(struct retrace_handle *handle)
 	struct iovec call_iov[2], redirect_iov[2];
 	struct msghdr call_msghdr, redirect_msghdr;
 	ssize_t iolen;
-	struct retrace_call_info *info;
-	struct retrace_arg_info *parg;
 
 	buf = malloc(IOBUFLEN);
 	if (buf == NULL)
@@ -137,47 +136,9 @@ retrace_trace(struct retrace_handle *handle)
 		if (iolen == 0)
 			break;
 
-		if (call_header.call_type == RPC_POSTCALL) {
-			info = retrace_get_call_info(call_header.function_id, buf);
-			printf("%s(", info->name);
-			for (parg = info->args; parg->name; ++parg) {
-				switch (parg->rpctype) {
-				case RPC_INT:
-					printf("%d", (int)parg->value);
-					break;
-				case RPC_UINT:
-					printf("%u", parg->value);
-					break;
-				case RPC_PTR:
-					printf("%p", parg->value);
-					break;
-				case RPC_STR:
-					printf("\"%s\"", parg->value);
-					break;
-				}
-				if (parg[1].name)
-					printf(", ");
-			}
-			printf(") = ");
-			switch (info->rpctype) {
-			case RPC_VOID:
-				printf("void\n");
-				break;
-			case RPC_INT:
-				printf("%d\n", info->result);
-				break;
-			case RPC_UINT:
-				printf("%u\n", info->result);
-				break;
-			case RPC_PTR:
-				printf("%p\n", info->result);
-				break;
-			case RPC_STR:
-				printf("\"%s\"\n", info->result);
-				break;
-			}
-			free(info);
-		}
+		if (call_header.call_type == RPC_POSTCALL)
+			retrace_handle(call_header.function_id, buf);
+
 		redirect_header.complete = 0;
 		redirect_header.redirect = 0;
 		iolen = sendmsg(handle->fd, &redirect_msghdr, 0);
@@ -185,4 +146,22 @@ retrace_trace(struct retrace_handle *handle)
 		if (iolen == -1)
 			error(1, 0, "Error sending redirect info (%s.)", strerror(errno));
 	}
+}
+
+void
+retrace_handle(enum rpc_function_id id, void *call)
+{
+	g_handlers[id](call);
+}
+
+retrace_handler_t
+retrace_get_handler(enum rpc_function_id id)
+{
+	return g_handlers[id];
+}
+
+void
+retrace_set_handler(enum rpc_function_id id, retrace_handler_t fn)
+{
+	g_handlers[id] = fn;
 }

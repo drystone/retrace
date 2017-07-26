@@ -1,0 +1,41 @@
+{{=[[ ]]=}}
+#include <string.h>
+#include "shim.h"
+#include "rpc.h"
+#include "frontend.h"
+
+[[#functions]]
+
+void
+default_[[name]]_handler(void *_call)
+{
+	struct rpc_[[name]] *call = _call;
+	[[#has_data]]
+	char *data = (char *)&call[1];
+	[[/has_data]]
+
+	printf("[[name]](");
+	[[#params]]
+	[[#is_string]]
+	printf("\"%s\"[[^last]], [[/last]]", data);
+	data += strlen((char *)data) + 1;
+	[[/is_string]]
+	[[^is_string]]
+	printf("[[format]][[^last]], [[/last]]", call->args.[[name]]);
+	[[/is_string]]
+	[[/params]]
+
+	[[#is_void]]
+	printf(")\n");
+	[[/is_void]]
+	[[^is_void]]
+	printf(") = [[format]]\n", call->result);
+	[[/is_void]]
+}
+[[/functions]]
+
+retrace_handler_t g_handlers[] = {
+	[[#functions]]
+	default_[[name]]_handler[[^last]],[[/last]]
+	[[/functions]]
+};
