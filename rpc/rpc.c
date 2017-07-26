@@ -20,7 +20,7 @@ init_sockfd()
 		error(1, 0, "retrace env{RTR_SOCKFD} not set.");
 
 	g_sockfd = 0;
-	for (p; *p; ++p) {
+	for (; *p; ++p) {
 		if (*p < '0' || *p > '9')
 			error(1, 0, "retrace env{RTR_SOCKFD} bad.");
 		g_sockfd = g_sockfd * 10 + *p - '0';

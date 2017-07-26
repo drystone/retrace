@@ -86,6 +86,8 @@ get_type(unsigned int line)
 			return p;
 
 	error(1, 0, "Unknown type [%s] at line %d.", ctype, line);
+
+	return NULL;
 }
 
 void add_parameter(unsigned int line, struct param_list *params)
@@ -153,7 +155,6 @@ void yaml(struct function_list *fns)
 {
 	struct function *function;
 	struct param *param;
-	int i;
 	char *ucname, *p;
 	struct header_list headers;
 	struct header *header;
@@ -222,7 +223,7 @@ int main(void)
 	char *buf = NULL;
 	size_t buflen = 0;
 	ssize_t len;
-	unsigned int line = 0, i;
+	unsigned int line = 0;
 	const char *tok;
 	struct function *fn = NULL;
 	struct function_list functions;

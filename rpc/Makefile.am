@@ -1,13 +1,14 @@
+AM_CFLAGS = -Wall -pedantic
 noinst_PROGRAMS = functions2yaml
 functions2yaml_SOURCES = functions2yaml.c
 
 lib_LTLIBRARIES = libretracerpc.la
 libretracerpc_la_LDFLAGS = -no-undefined -avoid-version
 libretracerpc_la_CFLAGS = $(AM_CFLAGS) $(LIBSSL_FLAGS)
-noinst_HEADERS = rpc.h shim.h
+noinst_HEADERS = rpc.h shim.h frontend.h
 libretracerpc_la_SOURCES = rpc.c shim.c version.c
 bin_PROGRAMS = retrace
-retrace_SOURCES = retrace.c version.c inspect.c
+retrace_SOURCES = retrace.c version.c inspect.c frontend.c
 
 BUILT_SOURCES = shim.c shim.h version.c inspect.c
 CLEANFILES = shim.c shim.h version.c inspect.c

@@ -112,7 +112,7 @@ retrace_impl_[[name]]([[#params]][[type]][[spacing]][[name]][[^last]], [[/last]]
 	va_end(ap);
 	[[/variadic]]
 
-	struct_rpc_[[name]]_send(RPC_POSTCALL, &in);
+	struct_rpc_[[name]]_send(RPC_POSTCALL, &real);
 	post = struct_rpc_[[name]]_recv(NULL);
 	[[^is_void]]rval = [[/is_void]]struct_rpc_[[name]]_to_args(post ? post : &real[[#params]][[#out]], &name[[/out]][[/params]]);
 	real_free(pre);

@@ -4,20 +4,20 @@
 #include "shim.h"
 #include "rpc.h"
 
-struct rtr_arg_info {
+struct retrace_arg_info {
 	const char *name;
 	const char *ctype;
 	enum rpc_type rpctype;
 	void *value;
 };
 
-struct rtr_call_info {
+struct retrace_call_info {
 	const char *name;
 	const char *ctype;
 	enum rpc_type rpctype;
 	void *result;
-	struct rtr_arg_info *args;
+	struct retrace_arg_info *args;
 };
 
-struct rtr_call_info *rtr_get_call_info(enum rpc_function_id, void *call);
+struct retrace_call_info *retrace_get_call_info(enum rpc_function_id, void *call);
 #endif
