@@ -18,13 +18,9 @@ enum rpc_inout {
 	RPC_INOUTPARAM
 };
 
-union rpc_value {
-	void *ptr;
-	int sint;
-	size_t size_t;
-	ssize_t ssize_t;
-	const char *str;
-	pid_t pid_t;
+struct rpc_control_header {
+	pid_t pid;
+	pthread_t tid;
 };
 
 struct rpc_call_header {
@@ -37,8 +33,6 @@ struct rpc_redirect_header {
 	int complete;
 };
 
-void rpc_send(struct msghdr *msg);
-void rpc_recv(struct msghdr *msg);
+int rpc_sockfd();
 
 #endif
-

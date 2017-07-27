@@ -44,7 +44,7 @@ struct_rpc_[[name]]_send(enum rpc_call_type call_type, const struct rpc_[[name]]
 	[[#params]]
 	[[/params]]
 
-	rpc_send(&msg);
+	sendmsg(rpc_sockfd(), &msg, 0);
 }
 
 static struct rpc_[[name]] *
@@ -61,7 +61,7 @@ struct_rpc_[[name]]_recv(int *complete)
 	header.redirect = 0;
 	header.complete = 0;
 
-	rpc_recv(&msg);
+	recvmsg(rpc_sockfd(), &msg, 0);
 	if (header.redirect) {
 	}
 

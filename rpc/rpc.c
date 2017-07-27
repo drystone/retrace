@@ -28,20 +28,49 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <error.h>
+#include <sys/socket.h>
+#include <pthread.h>
 
 #include "shim.h"
 #include "rpc.h"
 
+static pthread_once_t g_once_control = PTHREAD_ONCE_INIT;
+static pthread_key_t g_fdkey;
 static int g_sockfd = -1;
 
-static int g_inrpc;
+static void
+close_and_free(void *p)
+{
+	close(*(int *)p);
+	real_free(p);
+}
 
 static void
-init_sockfd()
+atfork_child()
+{
+	/*
+	 * remove all existing connections in the child
+	 * so forked process gets a new connection
+	 * Unfortunately, we can't determine whether there are
+	 * other pthread_atfork handlers so possibly some tracing
+	 * will go over the old connection
+	 */
+
+	pthread_key_delete(g_fdkey);
+	pthread_key_create(&g_fdkey, close_and_free);
+}
+
+static void
+init(void)
 {
 	const char *p;
 
-	/* TODO something better on error */
+	/*
+	 * get fd of control socket from environment
+	 * initialise the thread specific key
+	 * add fork handler for child
+	 */
+
 	p = real_getenv("RTR_SOCKFD");
 	if (p == 0)
 		error(1, 0, "retrace env{RTR_SOCKFD} not set.");
@@ -53,32 +82,66 @@ init_sockfd()
 		g_sockfd = g_sockfd * 10 + *p - '0';
 	}
 
-	send(g_sockfd, rpc_version, 32, 0);
+
+	pthread_key_create(&g_fdkey, close_and_free);
+
+	pthread_atfork(NULL, NULL, atfork_child);
 }
 
-void rpc_recv(struct msghdr *msg)
+static int
+new_rpc_endpoint()
 {
-	if (g_inrpc == 1)
-		return;
+	/*
+	 * create a socketpair and send one to front end
+	 * via the control socket
+	 */
 
-	if (g_sockfd == -1)
-		init_sockfd();
+	int sv[2], *pfd;
+	struct rpc_control_header control_header;
+	struct iovec iov[] = {
+	    { &control_header, sizeof(control_header) },
+	    { (char *)rpc_version, 32 }};
+	struct msghdr msg = { 0 };
+	struct cmsghdr *cmsg;
+	union {
+		char buf[CMSG_SPACE(sizeof(int))];
+		struct cmsghdr align;
+	} u;
 
-	g_inrpc = 1;
-	recvmsg(g_sockfd, msg, 0);
-	g_inrpc = 0;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 2;
+	msg.msg_control = u.buf;
+	msg.msg_controllen = sizeof(u.buf);
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+	pfd = (int *)CMSG_DATA(cmsg);
+
+	socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sv);
+	*pfd = sv[1];
+
+	control_header.pid = real_getpid();
+	control_header.tid = pthread_self();
+
+	sendmsg(g_sockfd, &msg, 0);
+
+	close(sv[1]);
+	return sv[0];
 }
 
-void
-rpc_send(struct msghdr *msg)
+int
+rpc_sockfd()
 {
-	if (g_inrpc == 1)
-		return;
+	int *pfd;
 
-	if (g_sockfd == -1)
-		init_sockfd();
+	pthread_once(&g_once_control, init);
 
-	g_inrpc = 1;
-	sendmsg(g_sockfd, msg, 0);
-	g_inrpc = 0;
+	pfd = pthread_getspecific(g_fdkey);
+	if (pfd == NULL) {
+		pfd = real_malloc(sizeof(int));
+		*pfd = new_rpc_endpoint();
+		pthread_setspecific(g_fdkey, pfd);
+	}
+	return *pfd;
 }

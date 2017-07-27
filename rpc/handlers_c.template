@@ -7,30 +7,36 @@
 [[#functions]]
 
 void
-default_[[name]]_handler(void *_call)
+default_[[name]]_handler(const struct retrace_rpc_endpoint *ep,
+	const struct rpc_call_header *call_header,
+	void *_call, struct rpc_redirect_header *redirect_header)
 {
 	struct rpc_[[name]] *call = _call;
 	[[#has_data]]
 	char *data = (char *)&call[1];
 	[[/has_data]]
 
-	printf("[[name]](");
-	[[#params]]
-	[[#is_string]]
-	printf("\"%s\"[[^last]], [[/last]]", data);
-	data += strlen((char *)data) + 1;
-	[[/is_string]]
-	[[^is_string]]
-	printf("[[format]][[^last]], [[/last]]", call->args.[[name]]);
-	[[/is_string]]
-	[[/params]]
+	if (call_header->call_type == RPC_POSTCALL) {
+		printf("[%d][%p] [[name]](", ep->pid, (void *)ep->tid);
+		[[#params]]
+		[[#is_string]]
+		printf("\"%s\"[[^last]], [[/last]]", data);
+		data += strlen((char *)data) + 1;
+		[[/is_string]]
+		[[^is_string]]
+		printf("[[format]][[^last]], [[/last]]", call->args.[[name]]);
+		[[/is_string]]
+		[[/params]]
 
-	[[#is_void]]
-	printf(")\n");
-	[[/is_void]]
-	[[^is_void]]
-	printf(") = [[format]]\n", call->result);
-	[[/is_void]]
+		[[#is_void]]
+		printf(")\n");
+		[[/is_void]]
+		[[^is_void]]
+		printf(") = [[format]]\n", call->result);
+		[[/is_void]]
+	}
+	redirect_header->complete = 0;
+	redirect_header->redirect = 0;
 }
 [[/functions]]
 

@@ -41,13 +41,58 @@
 
 extern retrace_handler_t g_handlers[];
 
+static struct retrace_rpc_endpoint *
+recv_endpoint(int fd)
+{
+	char version[32];
+	struct retrace_rpc_endpoint *endpoint;
+	struct rpc_control_header header;
+	struct iovec iov[2] = {
+		{&header, sizeof(header)},
+		{version, 32}};
+	struct msghdr msg = { 0 };
+	struct cmsghdr *cmsg;
+	union {
+		char buf[CMSG_SPACE(sizeof(int))];
+		struct cmsghdr align;
+	} u;
+	ssize_t iolen;
+
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 2;
+	msg.msg_control = u.buf;
+	msg.msg_controllen = sizeof(u.buf);
+
+	iolen = recvmsg(fd, &msg, 0);
+	if (iolen == 0)
+		return NULL;
+	if (iolen == -1)
+		error(1, 0, "error reading control socket");
+
+	/*
+	 * check version sent with new fd
+	 */
+	if (memcmp(version, rpc_version, 32) != 0)
+		error(1, 0, "Version mismatch");
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+
+	endpoint = malloc(sizeof(struct retrace_rpc_endpoint));
+	endpoint->fd = *(int *)CMSG_DATA(cmsg);
+	endpoint->pid = header.pid;
+	endpoint->tid = header.tid;
+
+	return endpoint;
+}
+
 struct retrace_handle *
 retrace_start(char *const argv[])
 {
 	int sv[2];
-	char fd_str[16], md5_buf[32];
+	char fd_str[16];
 	pid_t pid;
-	struct retrace_handle *handle = 0;
+	struct retrace_handle *handle;
+	struct retrace_rpc_endpoint *endpoint;
 
 	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sv))
 		error(1, 0, "Unable to create socketpair.");
@@ -66,34 +111,37 @@ retrace_start(char *const argv[])
 
 		execv(argv[0], argv);
 		error(1, 0, "Failed to exec (%s.)", strerror(errno));
+
+		return NULL;
 	} else {
+		close(sv[1]);
+
 		handle = malloc(sizeof(struct retrace_handle));
 		if (handle == NULL)
 			error(1, 0, "Out of memory.");
-		close(sv[1]);
+		SLIST_INIT(handle);
 
-		/*
-		 * first message from tracee is MD5 version
-		 */
-		if (recv(sv[0], md5_buf, 32, 0) <= 0)
-			error(1, 0, "Failed to trace program");
+		endpoint = malloc(sizeof(struct retrace_rpc_endpoint));
+		if (endpoint == NULL)
+			error(1, 0, "Out of memory.");
 
-		if (memcmp(md5_buf, rpc_version, 32) != 0)
-			error(1, 0, "Version mismatch");
+		SLIST_INSERT_HEAD(handle, endpoint, next);
+		endpoint->fd = sv[0];
+		endpoint->pid = 0;
 
-		handle->fd = sv[0];
-		handle->pid = pid;
+		return handle;
 	}
-	return handle;
 }
 
 void
 retrace_close(struct retrace_handle *handle)
 {
-	if (handle)
-	{
-		close(handle->fd);
-		waitpid(handle->pid, NULL, 0);
+	struct retrace_rpc_endpoint *endpoint;
+
+	SLIST_FOREACH(endpoint, handle, next) {
+		close(endpoint->fd);
+		if (endpoint->pid)
+			waitpid(endpoint->pid, NULL, 0);
 	}
 }
 
@@ -106,6 +154,9 @@ retrace_trace(struct retrace_handle *handle)
 	struct iovec call_iov[2], redirect_iov[2];
 	struct msghdr call_msghdr, redirect_msghdr;
 	ssize_t iolen;
+	fd_set readfds;
+	struct retrace_rpc_endpoint *endpoint, *newendpoint;
+	int numfds;
 
 	buf = malloc(IOBUFLEN);
 	if (buf == NULL)
@@ -128,30 +179,56 @@ retrace_trace(struct retrace_handle *handle)
 	redirect_msghdr.msg_iovlen = 1;
 
 	for (;;) {
-		iolen = recvmsg(handle->fd, &call_msghdr, 0);
+		FD_ZERO(&readfds);
+		numfds = 0;
+		SLIST_FOREACH(endpoint, handle, next) {
+			FD_SET(endpoint->fd, &readfds);
+			if (endpoint->fd > numfds)
+				numfds = endpoint->fd;
+		}
+		select(numfds + 1, &readfds, NULL, NULL, NULL);
 
-		if (iolen == -1)
-			error(1, 0, "Error receiving call info (%s.)", strerror(errno));
+		SLIST_FOREACH(endpoint, handle, next) {
+			if (!FD_ISSET(endpoint->fd, &readfds))
+				continue;
 
-		if (iolen == 0)
-			break;
+			if (endpoint->pid == 0) {
+				newendpoint = recv_endpoint(endpoint->fd);
+				if (!newendpoint)
+					return;
+				SLIST_INSERT_HEAD(handle, newendpoint, next);
 
-		if (call_header.call_type == RPC_POSTCALL)
-			retrace_handle(call_header.function_id, buf);
+				continue;
+			}
 
-		redirect_header.complete = 0;
-		redirect_header.redirect = 0;
-		iolen = sendmsg(handle->fd, &redirect_msghdr, 0);
+			iolen = recvmsg(endpoint->fd, &call_msghdr, 0);
 
-		if (iolen == -1)
-			error(1, 0, "Error sending redirect info (%s.)", strerror(errno));
+			if (iolen == -1)
+				error(1, 0, "Error receiving call info (%s.)", strerror(errno));
+
+			if (iolen == 0) {
+				SLIST_REMOVE(handle, endpoint, retrace_rpc_endpoint, next);
+				close(endpoint->fd);
+				free(endpoint);
+				break;
+			}
+
+			retrace_handle(endpoint, &call_header, buf, &redirect_header);
+
+			iolen = sendmsg(endpoint->fd, &redirect_msghdr, 0);
+
+			if (iolen == -1)
+				error(1, 0, "Error sending redirect info (%s.)", strerror(errno));
+		}
 	}
 }
 
 void
-retrace_handle(enum rpc_function_id id, void *call)
+retrace_handle(const struct retrace_rpc_endpoint * ep,
+	const struct rpc_call_header *call_header,
+	void *call, struct rpc_redirect_header *redirect_header)
 {
-	g_handlers[id](call);
+	g_handlers[call_header->function_id](ep, call_header, call, redirect_header);
 }
 
 retrace_handler_t
