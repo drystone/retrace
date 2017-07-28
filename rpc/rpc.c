@@ -127,21 +127,28 @@ new_rpc_endpoint()
 	sendmsg(g_sockfd, &msg, 0);
 
 	close(sv[1]);
-	return sv[0];
+	return (sv[0]);
 }
 
 int
 rpc_sockfd()
 {
-	int *pfd;
+	/*
+	 * we only need an fd per thread
+	 * so we'll store (void *)(fd + 1)
+	 * as address of thread local.
+	 * malloc no good at this point 
+	 * for firefox
+	 */
+
+	long int fd;
 
 	pthread_once(&g_once_control, init);
 
-	pfd = pthread_getspecific(g_fdkey);
-	if (pfd == NULL) {
-		pfd = real_malloc(sizeof(int));
-		*pfd = new_rpc_endpoint();
-		pthread_setspecific(g_fdkey, pfd);
+	fd = (long int)pthread_getspecific(g_fdkey);
+	if (fd == 0) {
+		fd = new_rpc_endpoint() + 1;
+		pthread_setspecific(g_fdkey, (void *)fd);
 	}
-	return *pfd;
+	return (fd - 1);
 }
