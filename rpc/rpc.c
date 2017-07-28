@@ -39,10 +39,9 @@ static pthread_key_t g_fdkey;
 static int g_sockfd = -1;
 
 static void
-close_and_free(void *p)
+free_tls(void *p)
 {
-	close(*(int *)p);
-	real_free(p);
+	close((long int)p);
 }
 
 static void
@@ -57,7 +56,7 @@ atfork_child()
 	 */
 
 	pthread_key_delete(g_fdkey);
-	pthread_key_create(&g_fdkey, close_and_free);
+	pthread_key_create(&g_fdkey, free_tls);
 }
 
 static void
@@ -82,8 +81,7 @@ init(void)
 		g_sockfd = g_sockfd * 10 + *p - '0';
 	}
 
-
-	pthread_key_create(&g_fdkey, close_and_free);
+	pthread_key_create(&g_fdkey, free_tls);
 
 	pthread_atfork(NULL, NULL, atfork_child);
 }

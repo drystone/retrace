@@ -80,7 +80,38 @@ recv_endpoint(int fd)
 	endpoint = malloc(sizeof(struct retrace_rpc_endpoint));
 	endpoint->fd = *(int *)CMSG_DATA(cmsg);
 	endpoint->pid = header.pid;
-	endpoint->tid = header.tid;
+
+	return endpoint;
+}
+
+struct retrace_rpc_endpoint *
+add_endpoint(struct retrace_handle *handle)
+{
+	struct retrace_process_info *pi, *procinfo = NULL;
+	struct retrace_rpc_endpoint *endpoint;
+
+	endpoint = recv_endpoint(handle->control_fd);
+	if (!endpoint)
+		return NULL;
+
+	SLIST_FOREACH(pi, &handle->processes, next) {
+		if (pi->pid == endpoint->pid) {
+			procinfo = pi;
+			break;
+		}
+	}
+
+	if (!procinfo) {
+		procinfo = malloc(sizeof(struct retrace_process_info));
+		if (!procinfo)
+			error(1, 0, "Out of memory.");
+		procinfo->pid = endpoint->pid;
+		procinfo->next_thread_num = 0;
+		SLIST_INSERT_HEAD(&handle->processes, procinfo, next);
+	}
+
+	endpoint->thread_num = procinfo->next_thread_num++;
+	SLIST_INSERT_HEAD(&handle->endpoints, endpoint, next);
 
 	return endpoint;
 }
@@ -92,7 +123,6 @@ retrace_start(char *const argv[])
 	char fd_str[16];
 	pid_t pid;
 	struct retrace_handle *handle;
-	struct retrace_rpc_endpoint *endpoint;
 
 	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sv))
 		error(1, 0, "Unable to create socketpair.");
@@ -119,15 +149,10 @@ retrace_start(char *const argv[])
 		handle = malloc(sizeof(struct retrace_handle));
 		if (handle == NULL)
 			error(1, 0, "Out of memory.");
-		SLIST_INIT(handle);
+		SLIST_INIT(&handle->endpoints);
+		SLIST_INIT(&handle->processes);
 
-		endpoint = malloc(sizeof(struct retrace_rpc_endpoint));
-		if (endpoint == NULL)
-			error(1, 0, "Out of memory.");
-
-		SLIST_INSERT_HEAD(handle, endpoint, next);
-		endpoint->fd = sv[0];
-		endpoint->pid = 0;
+		handle->control_fd = sv[0];
 
 		return handle;
 	}
@@ -138,11 +163,12 @@ retrace_close(struct retrace_handle *handle)
 {
 	struct retrace_rpc_endpoint *endpoint;
 
-	SLIST_FOREACH(endpoint, handle, next) {
+	SLIST_FOREACH(endpoint, &handle->endpoints, next) {
 		close(endpoint->fd);
 		if (endpoint->pid)
 			waitpid(endpoint->pid, NULL, 0);
 	}
+	close(handle->control_fd);
 }
 
 void
@@ -155,7 +181,7 @@ retrace_trace(struct retrace_handle *handle)
 	struct msghdr call_msghdr, redirect_msghdr;
 	ssize_t iolen;
 	fd_set readfds;
-	struct retrace_rpc_endpoint *endpoint, *newendpoint;
+	struct retrace_rpc_endpoint *endpoint;
 	int numfds;
 
 	buf = malloc(IOBUFLEN);
@@ -180,34 +206,36 @@ retrace_trace(struct retrace_handle *handle)
 
 	for (;;) {
 		FD_ZERO(&readfds);
-		numfds = 0;
-		SLIST_FOREACH(endpoint, handle, next) {
+
+		numfds = handle->control_fd;
+		FD_SET(handle->control_fd, &readfds);
+
+		SLIST_FOREACH(endpoint, &handle->endpoints, next) {
 			FD_SET(endpoint->fd, &readfds);
 			if (endpoint->fd > numfds)
 				numfds = endpoint->fd;
 		}
 		select(numfds + 1, &readfds, NULL, NULL, NULL);
 
-		SLIST_FOREACH(endpoint, handle, next) {
+		if (FD_ISSET(handle->control_fd, &readfds)) {
+			if (!add_endpoint(handle))
+				return;
+			continue;
+		}
+
+		SLIST_FOREACH(endpoint, &handle->endpoints, next) {
 			if (!FD_ISSET(endpoint->fd, &readfds))
 				continue;
-
-			if (endpoint->pid == 0) {
-				newendpoint = recv_endpoint(endpoint->fd);
-				if (!newendpoint)
-					return;
-				SLIST_INSERT_HEAD(handle, newendpoint, next);
-
-				continue;
-			}
 
 			iolen = recvmsg(endpoint->fd, &call_msghdr, 0);
 
 			if (iolen == -1)
-				error(1, 0, "Error receiving call info (%s.)", strerror(errno));
+				error(1, 0, "Error receiving call info (%s.)",
+				    strerror(errno));
 
 			if (iolen == 0) {
-				SLIST_REMOVE(handle, endpoint, retrace_rpc_endpoint, next);
+				SLIST_REMOVE(&handle->endpoints, endpoint,
+				    retrace_rpc_endpoint, next);
 				close(endpoint->fd);
 				free(endpoint);
 				break;

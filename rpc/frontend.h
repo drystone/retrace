@@ -11,10 +11,24 @@ struct retrace_rpc_endpoint {
 	SLIST_ENTRY(retrace_rpc_endpoint) next;
 	int fd;
 	pid_t pid;
-	pthread_t tid;
+	int thread_num;
 };
 
-SLIST_HEAD(retrace_handle, retrace_rpc_endpoint);
+SLIST_HEAD(retrace_endpoints, retrace_rpc_endpoint);
+
+struct retrace_process_info {
+	SLIST_ENTRY(retrace_process_info) next;
+	pid_t pid;
+	int next_thread_num;
+};
+
+SLIST_HEAD(process_list, retrace_process_info);
+
+struct retrace_handle {
+	struct retrace_endpoints endpoints;
+	struct process_list processes;
+	int control_fd;
+};
 
 typedef void (*retrace_handler_t) (const struct retrace_rpc_endpoint *ep,
 	const struct rpc_call_header *call_header,
