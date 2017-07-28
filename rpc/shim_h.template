@@ -19,6 +19,7 @@ struct rpc_[[name]] {
 	[[^is_void]]
 	[[rpctype]] result;
 	[[/is_void]]
+	int _errno;
 	[[#has_params]]
 	struct {
 		[[#params]]

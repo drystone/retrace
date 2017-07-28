@@ -5,6 +5,7 @@
 #include "shim.h"
 #include "rpc.h"
 #include <error.h>
+#include <errno.h>
 
 #ifdef __APPLE__
 struct interpose {
@@ -79,7 +80,7 @@ retrace_impl_[[name]]([[#params]][[type]][[spacing]][[name]][[^last]], [[/last]]
 #endif
 {
 	struct rpc_[[name]] in, *pre, real, *post;
-	int complete;
+	int complete, _errno;
 	[[#variadic]]
 	va_list ap;
 	[[/variadic]]
@@ -91,6 +92,7 @@ retrace_impl_[[name]]([[#params]][[type]][[spacing]][[name]][[^last]], [[/last]]
 	in.args.[[name]] = ([[rpctype]])[[name]];
 	[[/params]]
 
+	_errno = errno;
 	struct_rpc_[[name]]_send(RPC_PRECALL, &in);
 	pre = struct_rpc_[[name]]_recv(&complete);
 	if (complete) {
@@ -98,6 +100,7 @@ retrace_impl_[[name]]([[#params]][[type]][[spacing]][[name]][[^last]], [[/last]]
 		real_free(pre);
 		return[[^is_void]] ret[[/is_void]];
 	}
+	errno = _errno;
 
 	real = (pre == NULL ? in : *pre);
 	[[^variadic]]
@@ -108,12 +111,15 @@ retrace_impl_[[name]]([[#params]][[type]][[spacing]][[name]][[^last]], [[/last]]
 	[[^is_void]]real.result = [[/is_void]][[function]]([[#params]]real.args.[[name]], [[/params]]ap);
 	va_end(ap);
 	[[/variadic]]
+	real._errno = errno;
 
 	struct_rpc_[[name]]_send(RPC_POSTCALL, &real);
 	post = struct_rpc_[[name]]_recv(NULL);
 	[[^is_void]]ret = [[/is_void]]struct_rpc_[[name]]_to_args(post ? post : &real[[#params]][[#out]], &name[[/out]][[/params]]);
 	real_free(pre);
 	real_free(post);
+
+	errno = (post == NULL ? real._errno : post->_errno);
 	return[[^is_void]] ret[[/is_void]];
 }
 
