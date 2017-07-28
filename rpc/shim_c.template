@@ -105,7 +105,7 @@ retrace_impl_[[name]]([[#params]][[type]][[spacing]][[name]][[^last]], [[/last]]
 	[[/variadic]]
 	[[#variadic]]
 	va_start(ap, [[start]]);
-	[[^is_void]]real.result = [[/is_void]][[va_fn]][[name]]([[#params]]real.args.[[name]], [[/params]]ap);
+	[[^is_void]]real.result = [[/is_void]][[function]]([[#params]]real.args.[[name]], [[/params]]ap);
 	va_end(ap);
 	[[/variadic]]
 

@@ -71,7 +71,7 @@ parameter in ap va_list
 function sscanf int
 parameter in str const char *
 parameter in format const char *
-variadic vsscanf
+variadic real_vsscanf
 
 function strcat char *
 parameter inout dest char *
@@ -92,6 +92,11 @@ parameter in s2 const char *
 function strcpy char *
 parameter out dest char *
 parameter in src const char *
+
+function strncpy char *
+parameter out dest char *
+parameter in src const char *
+parameter in n size_t
 
 function strlen size_t
 parameter in s const char *
@@ -122,3 +127,13 @@ function write ssize_t
 parameter in fd int
 parameter in buf const void *
 parameter in count size_t
+
+function memmove void *
+parameter out dest void *
+parameter in src const void *
+parameter in n size_t
+
+function memcpy void *
+parameter out dest void *
+parameter in src const void *
+parameter in n size_t
