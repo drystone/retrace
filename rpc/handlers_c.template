@@ -17,7 +17,7 @@ default_[[name]]_handler(const struct retrace_rpc_endpoint *ep,
 	[[/has_data]]
 
 	if (call_header->call_type == RPC_POSTCALL) {
-		printf("(%d:%d) [[name]](", ep->pid, ep->thread_num);
+		printf("(%d:%d %d) [[name]](", ep->pid, ep->thread_num, ep->call_num);
 		[[#params]]
 		[[#is_string]]
 		printf("\"%s\"[[^last]], [[/last]]", data);

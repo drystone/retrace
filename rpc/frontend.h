@@ -12,6 +12,7 @@ struct retrace_rpc_endpoint {
 	int fd;
 	pid_t pid;
 	int thread_num;
+	unsigned int call_num;
 };
 
 SLIST_HEAD(retrace_endpoints, retrace_rpc_endpoint);

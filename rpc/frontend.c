@@ -243,6 +243,9 @@ retrace_trace(struct retrace_handle *handle)
 
 			retrace_handle(endpoint, &call_header, buf, &redirect_header);
 
+			if (call_header.call_type == RPC_POSTCALL)
+				++(endpoint->call_num);
+
 			iolen = sendmsg(endpoint->fd, &redirect_msghdr, 0);
 
 			if (iolen == -1)
