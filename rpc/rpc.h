@@ -12,27 +12,18 @@ enum rpc_call_type {
 	RPC_POSTCALL
 };
 
-enum rpc_inout {
-	RPC_INPARAM,
-	RPC_OUTPARAM,
-	RPC_INOUTPARAM
-};
-
 struct rpc_control_header {
 	pid_t pid;
 	pthread_t tid;
 };
 
-struct rpc_call_header {
+struct call_header {
 	enum rpc_call_type call_type;
 	enum rpc_function_id function_id;
 };
 
-struct rpc_redirect_header {
-	int redirect;
-	int complete;
-};
-
 int rpc_sockfd();
+
+int do_rpc(struct msghdr *send_msg, struct msghdr *recv_msg);
 
 #endif

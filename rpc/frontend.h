@@ -31,15 +31,21 @@ struct retrace_handle {
 	int control_fd;
 };
 
-typedef void (*retrace_handler_t) (const struct retrace_rpc_endpoint *ep,
-	const struct rpc_call_header *call_header,
-	void * call, struct rpc_redirect_header *redirect_header);
+typedef void (*retrace_precall_handler_t) (const struct retrace_rpc_endpoint *ep,
+	union rpc_precall *call, union rpc_precall_redirect *redirect);
+
+typedef void (*retrace_postcall_handler_t) (const struct retrace_rpc_endpoint *ep,
+	union rpc_postcall *call, union rpc_postcall **redirect);
+
+extern retrace_precall_handler_t g_precall_handlers[];
+extern retrace_postcall_handler_t g_postcall_handlers[];
 
 struct retrace_handle *retrace_start(char *const argv[]);
 void retrace_close(struct retrace_handle *handle);
 void retrace_trace(struct retrace_handle *handle);
-void retrace_handle(const struct retrace_rpc_endpoint *ep,
-	const struct rpc_call_header *call_header,
-	void *call, struct rpc_redirect_header *redirect_header);
-void retrace_set_handler(enum rpc_function_id, retrace_handler_t handler);
+void retrace_handle_precall(const struct retrace_rpc_endpoint *ep,
+	union rpc_precall *call, union rpc_precall_redirect *redirect);
+void retrace_set_precall_handler(enum rpc_function_id, retrace_precall_handler_t handler);
+
+void *trace_buffer(void *buffer, size_t length);
 #endif

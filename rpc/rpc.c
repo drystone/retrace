@@ -30,6 +30,7 @@
 #include <error.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include "shim.h"
 #include "rpc.h"
@@ -117,15 +118,15 @@ new_rpc_endpoint()
 	pfd = (int *)CMSG_DATA(cmsg);
 
 	socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sv);
-	*pfd = sv[1];
+	*pfd = sv[0];
 
 	control_header.pid = real_getpid();
 	control_header.tid = pthread_self();
 
 	sendmsg(g_sockfd, &msg, 0);
 
-	close(sv[1]);
-	return (sv[0]);
+	close(sv[0]);
+	return (sv[1]);
 }
 
 int
@@ -135,7 +136,7 @@ rpc_sockfd()
 	 * we only need an fd per thread
 	 * so we'll store (void *)(fd + 1)
 	 * as address of thread local.
-	 * malloc no good at this point 
+	 * malloc no good at this point
 	 * for firefox
 	 */
 
@@ -145,8 +146,35 @@ rpc_sockfd()
 
 	fd = (long int)pthread_getspecific(g_fdkey);
 	if (fd == 0) {
-		fd = new_rpc_endpoint() + 1;
+		fd = new_rpc_endpoint();
 		pthread_setspecific(g_fdkey, (void *)fd);
 	}
-	return (fd - 1);
+	return fd;
+}
+
+int
+do_rpc(struct msghdr *send_msg, struct msghdr *recv_msg)
+{
+	int fd;
+
+	fd = rpc_sockfd();
+
+	if (fd == -1)
+		return 0;
+
+	while (sendmsg(fd, send_msg, 0) == -1) {
+		if (errno != EINTR) {
+			pthread_setspecific(g_fdkey, (void *)-1);
+			return 0;
+		}
+	}
+
+	while (recvmsg(fd, recv_msg, 0) == -1) {
+		if (errno != EINTR) {
+			pthread_setspecific(g_fdkey, (void *)-1);
+			return 0;
+		}
+	}
+
+	return 1;
 }

@@ -33,13 +33,12 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <ctype.h>
 
 #include "rpc.h"
 #include "frontend.h"
 
 #define IOBUFLEN 64 * 1024
-
-extern retrace_handler_t g_handlers[];
 
 static struct retrace_rpc_endpoint *
 recv_endpoint(int fd)
@@ -111,6 +110,7 @@ add_endpoint(struct retrace_handle *handle)
 	}
 
 	endpoint->thread_num = procinfo->next_thread_num++;
+	endpoint->call_num = 0;
 	SLIST_INSERT_HEAD(&handle->endpoints, endpoint, next);
 
 	return endpoint;
@@ -162,23 +162,37 @@ void
 retrace_close(struct retrace_handle *handle)
 {
 	struct retrace_rpc_endpoint *endpoint;
+	struct retrace_process_info *procinfo;
 
-	SLIST_FOREACH(endpoint, &handle->endpoints, next) {
+	close(handle->control_fd);
+
+	while (!SLIST_EMPTY(&handle->endpoints)) {
+		endpoint = SLIST_FIRST(&handle->endpoints);
+		SLIST_REMOVE_HEAD(&handle->endpoints, next);
 		close(endpoint->fd);
 		if (endpoint->pid)
 			waitpid(endpoint->pid, NULL, 0);
+		free(endpoint);
 	}
-	close(handle->control_fd);
+
+	while (!SLIST_EMPTY(&handle->processes)) {
+		procinfo = SLIST_FIRST(&handle->processes);
+		SLIST_REMOVE_HEAD(&handle->processes, next);
+		free(procinfo);
+	}
+
+	free(handle);
 }
 
 void
 retrace_trace(struct retrace_handle *handle)
 {
 	char *buf;
-	struct rpc_call_header call_header;
-	struct rpc_redirect_header redirect_header;
-	struct iovec call_iov[2], redirect_iov[2];
-	struct msghdr call_msghdr, redirect_msghdr;
+	struct call_header call_header;
+	union rpc_precall_redirect redirect;
+	union rpc_postcall *post;
+	struct iovec call_iov[2], precall_iov[1], postcall_iov[1];
+	struct msghdr call_msghdr, precall_msghdr, postcall_msghdr;
 	ssize_t iolen;
 	fd_set readfds;
 	struct retrace_rpc_endpoint *endpoint;
@@ -189,7 +203,7 @@ retrace_trace(struct retrace_handle *handle)
 		error(1, 0, "Out of memory.");
 
 	call_iov[0].iov_base = &call_header;
-	call_iov[0].iov_len = sizeof(struct rpc_call_header);
+	call_iov[0].iov_len = sizeof(struct call_header);
 	call_iov[1].iov_base = buf;
 	call_iov[1].iov_len = IOBUFLEN;
 
@@ -197,12 +211,19 @@ retrace_trace(struct retrace_handle *handle)
 	call_msghdr.msg_iov = call_iov;
 	call_msghdr.msg_iovlen = 2;
 
-	redirect_iov[0].iov_base = &redirect_header;
-	redirect_iov[0].iov_len = sizeof(struct rpc_redirect_header);
+	precall_iov[0].iov_base = &redirect;
+	precall_iov[0].iov_len = sizeof(redirect);
 
-	memset(&redirect_msghdr, 0, sizeof(struct msghdr));
-	redirect_msghdr.msg_iov = redirect_iov;
-	redirect_msghdr.msg_iovlen = 1;
+	memset(&precall_msghdr, 0, sizeof(struct msghdr));
+	precall_msghdr.msg_iov = precall_iov;
+	precall_msghdr.msg_iovlen = 1;
+
+	postcall_iov[0].iov_base = &post;
+	postcall_iov[0].iov_len = sizeof(post);
+
+	memset(&postcall_msghdr, 0, sizeof(struct msghdr));
+	postcall_msghdr.msg_iov = postcall_iov;
+	postcall_msghdr.msg_iovlen = 1;
 
 	for (;;) {
 		FD_ZERO(&readfds);
@@ -219,7 +240,7 @@ retrace_trace(struct retrace_handle *handle)
 
 		if (FD_ISSET(handle->control_fd, &readfds)) {
 			if (!add_endpoint(handle))
-				return;
+				break;
 			continue;
 		}
 
@@ -241,35 +262,44 @@ retrace_trace(struct retrace_handle *handle)
 				break;
 			}
 
-			retrace_handle(endpoint, &call_header, buf, &redirect_header);
-
-			if (call_header.call_type == RPC_POSTCALL)
+			if (call_header.call_type == RPC_PRECALL) {
+				g_precall_handlers[call_header.function_id](
+				    endpoint, (union rpc_precall *)buf, &redirect);
+				iolen = sendmsg(endpoint->fd, &precall_msghdr, 0);
+			} else if (call_header.call_type == RPC_POSTCALL) {
+				g_postcall_handlers[call_header.function_id](
+				    endpoint, (union rpc_postcall *)buf, &post);
+				iolen = sendmsg(endpoint->fd, &postcall_msghdr, 0);
 				++(endpoint->call_num);
-
-			iolen = sendmsg(endpoint->fd, &redirect_msghdr, 0);
+			}
 
 			if (iolen == -1)
 				error(1, 0, "Error sending redirect info (%s.)", strerror(errno));
 		}
 	}
+	free(buf);
+}
+
+retrace_precall_handler_t
+retrace_get_precall_handler(enum rpc_function_id id)
+{
+	return g_precall_handlers[id];
 }
 
 void
-retrace_handle(const struct retrace_rpc_endpoint * ep,
-	const struct rpc_call_header *call_header,
-	void *call, struct rpc_redirect_header *redirect_header)
+retrace_set_precall_handler(enum rpc_function_id id, retrace_precall_handler_t fn)
 {
-	g_handlers[call_header->function_id](ep, call_header, call, redirect_header);
+	g_precall_handlers[id] = fn;
 }
 
-retrace_handler_t
-retrace_get_handler(enum rpc_function_id id)
+void *
+trace_buffer(void *buffer, size_t length)
 {
-	return g_handlers[id];
-}
+	char *p = buffer;
+	int i;
 
-void
-retrace_set_handler(enum rpc_function_id id, retrace_handler_t fn)
-{
-	g_handlers[id] = fn;
+	for (i = 0; i < length; i++, p++)
+		printf("%c", isprint(*p) ? *p : '.');
+
+	return (buffer + length);
 }

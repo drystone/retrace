@@ -4,44 +4,72 @@
 #include "rpc.h"
 #include "frontend.h"
 
+#define TRACE_char(v, d) printf("'%c'", v)
+#define TRACE_dir(v, d) printf("%p:%d", v.address, v.fd)
+#define TRACE_dirent(v, d) printf("%p", v)
+#define TRACE_file(v, d) printf("%p:%d", v.address, v.fd)
+#define TRACE_int(v, d) printf("%d", v)
+#define TRACE_pdirent(v, d) printf("%p:%p", v, *v)
+#define TRACE_pid_t(v, d) printf("%d", v)
+#define TRACE_pvoid(v, d) printf("%p", v)
+#define TRACE_size_t(v, d) printf("%lu", v)
+#define TRACE_ssize_t(v, d) printf("%ld", v)
+#define TRACE_string(v, d) do {						\
+		if (v) {						\
+			printf("\"%s\"", d);				\
+			d += strlen(d) + 1;				\
+		} else							\
+			printf("NULL");					\
+	} while (0);
+#define TRACE_buffer(v, d) d = trace_buffer(d, v.len)
 [[#functions]]
 
 void
-default_[[name]]_handler(const struct retrace_rpc_endpoint *ep,
-	const struct rpc_call_header *call_header,
-	void *_call, struct rpc_redirect_header *redirect_header)
+default_[[fname]]_precall_handler(const struct retrace_rpc_endpoint *ep,
+	union rpc_precall *call,
+	union rpc_precall_redirect *redirect)
 {
-	struct rpc_[[name]] *call = _call;
-	[[#has_data]]
+	redirect->precall_redirect_[[fname]].precall_redirect = NULL;
+	redirect->precall_redirect_[[fname]].postcall_redirect = NULL;
+}
+
+void
+default_[[fname]]_postcall_handler(const struct retrace_rpc_endpoint *ep,
+	union rpc_postcall *rpc_call,
+	union rpc_postcall **post)
+{
+	struct postcall_[[fname]] *call = &(rpc_call->postcall_[[fname]]);
 	char *data = (char *)&call[1];
-	[[/has_data]]
 
-	if (call_header->call_type == RPC_POSTCALL) {
-		printf("(%d:%d %d) [[name]](", ep->pid, ep->thread_num, ep->call_num);
-		[[#params]]
-		[[#is_string]]
-		printf("\"%s\"[[^last]], [[/last]]", data);
-		data += strlen((char *)data) + 1;
-		[[/is_string]]
-		[[^is_string]]
-		printf("[[format]][[^last]], [[/last]]", call->args.[[name]]);
-		[[/is_string]]
-		[[/params]]
+	printf("(%d:%d %d) [[fname]](", ep->pid, ep->thread_num, ep->call_num);
+	[[#params]]
+	TRACE_[[post]](call->args.[[pname]], data);
+	[[^last]]
+	printf(", ");
+	[[/last]]
+	[[/params]]
 
-		[[#is_void]]
-		printf(")\n");
-		[[/is_void]]
-		[[^is_void]]
-		printf(") = [[format]]\n", call->result);
-		[[/is_void]]
-	}
-	redirect_header->complete = 0;
-	redirect_header->redirect = 0;
+	[[^post]]
+	printf(")\n");
+	[[/post]]
+	[[#post]]
+	printf(") = ");
+	TRACE_[[post]](call->result, data);
+	printf("\n");
+	[[/post]]
+
+	*post = NULL;
 }
 [[/functions]]
 
-retrace_handler_t g_handlers[] = {
+retrace_precall_handler_t g_precall_handlers[] = {
 	[[#functions]]
-	default_[[name]]_handler[[^last]],[[/last]]
+	default_[[fname]]_precall_handler[[^last]],[[/last]]
+	[[/functions]]
+};
+
+retrace_postcall_handler_t g_postcall_handlers[] = {
+	[[#functions]]
+	default_[[fname]]_postcall_handler[[^last]],[[/last]]
 	[[/functions]]
 };
