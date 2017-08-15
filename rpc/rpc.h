@@ -22,8 +22,14 @@ struct call_header {
 	enum rpc_function_id function_id;
 };
 
+struct redirect_header {
+	int preredirect;
+	int postredirect;
+};
+
 int rpc_sockfd();
 
-int do_rpc(struct msghdr *send_msg, struct msghdr *recv_msg);
+int do_send(struct msghdr *msg);
+int do_recv(struct msghdr *msg);
 
 #endif

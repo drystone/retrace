@@ -1,4 +1,4 @@
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall -Wno-sizeof-array-argument
 noinst_PROGRAMS = functions2yaml
 functions2yaml_SOURCES = functions2yaml.c
 
@@ -10,17 +10,22 @@ libretracerpc_la_SOURCES = rpc.c shim.c version.c fixups.c
 bin_PROGRAMS = retrace
 retrace_SOURCES = retrace.c version.c handlers.c frontend.c
 
-BUILT_SOURCES = shim.c shim.h version.c handlers.c
-CLEANFILES = shim.c shim.h version.c handlers.c
+FUNCTIONS_DEPS= shim.c shim.h handlers.c
 
-shim.c : functions functions2yaml shim_c.template shim.h
-	./functions2yaml <$< | mustache - shim_c.template >$@
+BUILT_SOURCES= $(FUNCTIONS_DEPS) version.c
+CLEANFILES= $(BUILT_SOURCES) functions.yaml
 
-shim.h : functions functions2yaml shim_h.template
-	./functions2yaml <$< | mustache - shim_h.template >$@
+shim.h: shim_h.template
+shim.c: shim_c.template
+handlers.c : handlers_c.template
 
-handlers.c : functions functions2yaml handlers_c.template shim.h rpc.h frontend.h
-	./functions2yaml <$< | mustache - handlers_c.template >$@
+$(FUNCTIONS_DEPS): functions.yaml
+
+$(FUNCTIONS_DEPS):
+	mustache - $< <functions.yaml >$@
 
 version.c : shim.c shim.h
 	echo const char *rpc_version = \"$$(cat shim.c shim.h | md5sum | cut -c1-32)\"\; >$@
+
+functions.yaml : functions functions2yaml
+	./functions2yaml <$< >$@

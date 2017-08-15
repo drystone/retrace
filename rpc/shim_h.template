@@ -10,16 +10,16 @@
 
 enum rpc_function_id {
 	[[#functions]]
-	[[enum]],
+	RPC_[[name]],
 	[[/functions]]
 };
 [[#functions]]
 
-struct precall_[[fname]] {
+struct precall_[[name]] {
 	[[#num_params]]
 	struct {
 		[[#params]]
-		[[cpre]][[pname]];
+		[[type]][[name]];
 		[[/params]]
 	} args;
 	[[/num_params]]
@@ -28,44 +28,44 @@ struct precall_[[fname]] {
 	[[/num_params]]
 };
 
-struct postcall_[[fname]] {
-	[[#post]]
-	[[cpost]]result;
-	[[/post]]
+struct postcall_[[name]] {
+	[[#result]]
+	[[type]]result;
+	[[/result]]
 	int _errno;
 	[[#num_params]]
 	struct {
 		[[#params]]
-		[[cpost]][[pname]];
+		[[type]][[name]];
 		[[/params]]
 	} args;
 	[[/num_params]]
 };
 
-struct precall_redirect_[[fname]] {
-	struct precall_[[fname]] *precall_redirect;
-	struct postcall_[[fname]] *postcall_redirect;
+struct precall_redirect_[[name]] {
+	struct precall_[[name]] *precall_redirect;
+	struct postcall_[[name]] *postcall_redirect;
 };
 
-typedef [[ctype]](*rtr_[[fname]]_t)([[#params]][[ctype]][[pname]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]]);
-extern rtr_[[fname]]_t real_[[fname]];
+typedef [[type]](*rtr_[[name]]_t)([[#params]][[type]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]]);
+extern rtr_[[name]]_t real_[[name]];
 [[/functions]]
 
 union rpc_precall {
 	[[#functions]]
-	struct precall_[[fname]] precall_[[fname]];
+	struct precall_[[name]] precall_[[name]];
 	[[/functions]]
 };
 
 union rpc_postcall {
 	[[#functions]]
-	struct postcall_[[fname]] postcall_[[fname]];
+	struct postcall_[[name]] postcall_[[name]];
 	[[/functions]]
 };
 
 union rpc_precall_redirect {
 	[[#functions]]
-	struct precall_redirect_[[fname]] precall_redirect_[[fname]];
+	struct precall_redirect_[[name]] precall_redirect_[[name]];
 	[[/functions]]
 };
 

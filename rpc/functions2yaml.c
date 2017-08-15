@@ -32,57 +32,76 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+enum pre_or_post {BOTH, PRE, POST};
+
+struct data {
+	const char *length_format;
+};
+
 struct type {
 	const char *name;
 	const char *ctype;
-	const char *rpctype;
-	int fixup;
+	const char *length_fn;
 } types[] = {
-	{"char",	"char ",		"char ",	0},
-	{"buffer",	"void *",
-			"struct {void *address; size_t len;} ",	1},
-	{"dir",		"DIR *",
-			"struct {void *address; int fd;} ",	0},
-	{"cstring",	"const char *",		NULL,		0},
-	{"dirent",	"struct dirent *",	NULL,		0},
-	{"file",	"FILE *",
-			"struct {void *address; int fd;} ",	0},
-	{"int",		"int ",			"int ",		0},
-	{"pcvoid",	"const void *",		NULL,		0},
-	{"pid_t",	"pid_t ",		"pid_t ",	0},
-	{"pdirent",	"struct dirent **",	NULL,		0},
-	{"pvoid",	"void *",		"void *",	0},
-	{"size_t",	"size_t ",		"size_t ",	0},
-	{"ssize_t",	"ssize_t ",		"ssize_t ",	0},
-	{"string",	"char *",		"char *",	0},
-	{"va_list",	"va_list ",		NULL,		0},
-	{NULL,		NULL,			NULL,		0}
+	{"char",	"int ",			NULL		},
+	{"cstring",	"const char *",		"SAFE_STRLEN"	},
+	{"dir",		"DIR *",		NULL		},
+	{"dirent",	"struct dirent *",	"DIRENT_SIZE"	},
+	{"fd",		"int ",			NULL		},
+	{"file",	"FILE *",		NULL		},
+	{"int",		"int ",			NULL		},
+	{"pchar",	"char *",		NULL		},
+	{"pcvoid",	"const void *",		NULL		},
+	{"pdirent",	"struct dirent **",	NULL		},
+	{"pid_t",	"pid_t ",		NULL	 	},
+	{"pvoid",	"void *",		NULL		},
+	{"size_t",	"size_t ",		NULL		},
+	{"ssize_t",	"ssize_t ",		NULL		},
+	{"string",	"char *",		"SAFE_STRLEN"	},
+	{"va_list",	"va_list ",		NULL		},
+	{"void",	"void ",		NULL		},
+	{NULL,		NULL,			NULL		}
 };
 
-enum rpc_type {
-	RPC_VOID,
-	RPC_PTR,
-	RPC_INT,
-	RPC_UINT,
-	RPC_STR
+struct rpctype {
+	const char *name;
+	const char *ctype;
+} rpctypes[] = {
+	{"int",		"int "		},
+	{"pid_t",	"pid_t "	},
+	{"ptr",		"void *"	},
+	{"size_t",	"size_t "	},
+	{"ssize_t",	"ssize_t "	},
+	{NULL,		NULL		}
 };
 
 struct param {
 	TAILQ_ENTRY(param) next;
 	const char *name;
-	const struct type *type;
-	const struct type *pre;
-	const struct type *post;
+	enum pre_or_post pre_or_post;
+	const char *ctype;
+	const char *length_fn;
 };
 
 TAILQ_HEAD(param_list, param);
+
+struct extra {
+	TAILQ_ENTRY(extra) next;
+	const char *name;
+	enum pre_or_post pre_or_post;
+	const char *init;
+	const char *ctype;
+	const char *length_fn;
+};
+
+TAILQ_HEAD(extra_list, extra);
 
 struct function {
 	STAILQ_ENTRY(function) next;
 	const char *name;
 	const struct type *type;
-	const struct type *post;
 	struct param_list params;
+	struct extra_list extras;
 	const char *va_fn;
 };
 
@@ -105,14 +124,13 @@ _strdup(const char *s)
 }
 
 const struct type *
-lookup_type(const char *s, int line)
+lookup_type(const char *s)
 {
 	struct type *p;
 
 	for (p = types; p->name; p++)
 		if (!strcmp(p->name, s))
 			return p;
-	error(1, 0, "Parameter type [%s] not found at line %d.", s, line);
 	return NULL;
 }
 
@@ -120,51 +138,116 @@ void yaml(struct function_list *fns)
 {
 	struct function *fn;
 	struct param *param;
-	int num_params;
+	struct extra *extra;
+	int rpccount, preredirect_data, postredirect_data;
 
 	printf("---\n");
 	printf("functions:\n");
 	STAILQ_FOREACH(fn, fns, next) {
 
-		printf("- fname: %s\n", fn->name);
-		printf("  enum: RPC_%s\n", fn->name);
-		printf("  type: %s\n", fn->type->name);
-		printf("  ctype: \"%s\"\n", fn->type->ctype);
-		if (fn->post) {
-			printf("  post: \"%s\"\n", fn->post->name);
-			printf("  cpost: \"%s\"\n", fn->post->rpctype);
-			if (fn->post->fixup)
-				printf("  fixup: true\n");
-		}
+		printf("- name: %s\n", fn->name);
+		printf("  type: \"%s\"\n", fn->type->ctype);
+		if (strcmp(fn->type->name, "void") != 0)
+			printf("  result: true\n");
 
-		if (fn->va_fn)
-			printf("  variadic: %s\n", fn->va_fn);
-
-		num_params = 0;
 		if (!TAILQ_EMPTY(&(fn->params))) {
 			printf("  params:\n");
 			TAILQ_FOREACH(param, &(fn->params), next) {
-				printf("  - pname: %s\n", param->name);
-				printf("    pnum: %d\n", num_params);
-				printf("    type: %s\n", param->type->name);
-				printf("    ctype: \"%s\"\n", param->type->ctype);
-				printf("    pre: %s\n", param->pre->name);
-				printf("    cpre: \"%s\"\n", param->pre->rpctype);
-				if (param->pre->fixup)
-					printf("    prefixup: true\n");
-				printf("    post: %s\n", param->post->name);
-				printf("    cpost: \"%s\"\n", param->post->rpctype);
-				if (param->post->fixup)
-					printf("    postfixup: true\n");
-				++num_params;
+				printf("  - name: %s\n", param->name);
+				printf("    type: \"%s\"\n",
+				    param->ctype);
 			}
 			printf("    last: true\n");
 		}
-		if (num_params) {
-			printf("  num_params: %d\n", num_params);
+		
+		if (fn->va_fn) {
+			printf("  variadic: %s\n", fn->va_fn);
 			printf("  last_param: %s\n",
 			    TAILQ_LAST(&(fn->params), param_list)->name);
 		}
+
+		if (!TAILQ_EMPTY(&(fn->extras))) {
+			printf("  extras:\n");
+			TAILQ_FOREACH(extra, &(fn->extras), next) {
+				printf("  - name: %s\n", extra->name);
+				printf("    type: \"%s\"\n",
+				    extra->ctype);
+				if (extra->pre_or_post == PRE)
+					printf("    pre: true\n");
+				else
+					printf("    post: true\n");
+				printf("    init: %s\n", extra->init);
+			}
+		}
+		
+		rpccount = 0;
+		printf("  rpcvalues:\n");
+		TAILQ_FOREACH(param, &(fn->params), next) {
+			printf("  - param: true\n");
+			printf("    pre: true\n");
+			printf("    post: true\n");
+			printf("    base: \"&%s\"\n", param->name);
+			printf("    len: sizeof(%s)\n", param->name);
+			++rpccount;
+		}
+		TAILQ_FOREACH(extra, &(fn->extras), next) {
+			printf("  - extra: true\n");
+			if (extra->pre_or_post == PRE)
+				printf("    pre: true\n");
+			else
+				printf("    post: true\n");
+			printf("    base: \"&%s\"\n", extra->name);
+			printf("    len: sizeof(%s)\n", extra->name);
+			++rpccount;
+		}
+		if (strcmp(fn->type->name, "void") != 0) {
+			printf("  - result: true\n");
+			printf("    post: true\n");
+			printf("    base: \"&_result\"\n");
+			printf("    len: sizeof(_result)\n");
+			++rpccount;
+		}
+		printf("  - errno: true\n");
+		printf("    post: true\n");
+		printf("    base: \"&errno\"\n");
+		printf("    len: sizeof(errno)\n");
+		++rpccount;
+
+		preredirect_data = 0;
+		postredirect_data = 0;
+		TAILQ_FOREACH(param, &(fn->params), next) {
+			if (param->length_fn != NULL) {
+				printf("  - param-data: true\n");
+				if (param->pre_or_post != POST) {
+					printf("    pre: true\n");
+					preredirect_data = 1;
+				}
+				if (param->pre_or_post != PRE) {
+					printf("    post: true\n");
+					postredirect_data = 1;
+				}
+				printf("    name: %s\n", param->name);
+				printf("    base: \"(void *)%s\"\n", param->name);
+				printf("    len: %s(%s)\n", param->length_fn, param->name);
+				++rpccount;
+			}
+		}
+
+		if (fn->type->length_fn != NULL) {
+			printf("  - result-data: true\n");
+			printf("    post: true\n");
+			printf("    name: _result\n");
+			printf("    base: (void *)_result\n");
+			printf("    len: %s(_result)\n", fn->type->length_fn);
+			postredirect_data = 1;
+			++rpccount;
+		}
+
+		printf("  max-rpcvalues: %d\n", rpccount);
+		if (preredirect_data)
+			printf("  preredirect-data: true\n");
+		if (postredirect_data)
+			printf("  postredirect-data: true\n");
 	}
 	printf("---\n");
 }
@@ -174,26 +257,31 @@ int main(void)
 	char *buf = NULL;
 	size_t buflen = 0;
 	ssize_t len;
-	unsigned int line = 0;
+	unsigned int line;
 	const char *tok;
 	struct function *fn = NULL;
 	struct function_list functions;
 	struct param *param;
-	struct type voidtype = {"void", "void ", NULL};
+	struct extra *extra;
+	const struct type *type;
 
 	STAILQ_INIT(&functions);
 
-	for (len = 0; len >= 0; ++line, len = getline(&buf, &buflen, stdin)) {
+	line = 0;
+	for (;;) {
+		len = getline(&buf, &buflen, stdin);
 
-		if (len == 0)
-			continue;
+		if (len <= 0)
+			break;
 
-		if (*buf == ';')
-			continue;
+		++line;
 
 		/* strip \n from buffer */
 		if (buf[len - 1] == '\n')
 			buf[len - 1] = '\0';
+
+		if (*buf == ';')
+			continue;
 
 		tok = strtok(buf, " ");
 		if (tok == NULL)
@@ -214,6 +302,7 @@ int main(void)
 			fn = check_alloc(malloc(sizeof(struct function)));
 			memset(fn, 0, sizeof(struct function));
 			TAILQ_INIT(&(fn->params));
+			TAILQ_INIT(&(fn->extras));
 
 			fn->name = _strdup(strtok(NULL, " "));
 			if (fn->name == NULL)
@@ -227,20 +316,20 @@ int main(void)
 				error(1, 0, "Function without type "
 				    "at line %d.", line);
 
-			if (!strcmp(tok, "void"))
-				fn->type = &voidtype;
-			else {
-				fn->type = lookup_type(tok, line);
+			fn->type = lookup_type(tok);
 
-				tok = strtok(NULL, " ");
-				fn->post = tok ? lookup_type(tok, line) : fn->type;
+			if (fn->type == NULL)
+				error(1, 0, "Bad function type [%s] at "
+				    "line %d.", tok, line);
 
-				if (fn->post->rpctype == NULL)
-					error(1, 0, "Not an rpc type [%s] at "
-					    "line %d.", fn->post->name, line);
-			}
+			if (strtok(NULL, " "))
+				error(1, 0, "Too many tokens at line %d.",
+				    line);
+
 		} else if (strcmp(tok, "parameter") == 0) {
 			param = check_alloc(malloc(sizeof(struct param)));
+
+			param->pre_or_post = BOTH;
 
 			param->name = _strdup(strtok(NULL, " "));
 			if (param->name == NULL)
@@ -252,20 +341,20 @@ int main(void)
 				error(1, 0, "Parameter must have a type "
 				    "at line %d.", line);
 
-			param->type = lookup_type(tok, line);
+			type = lookup_type(tok);
 
-			tok = strtok(NULL, " ");
-			param->pre = tok ? lookup_type(tok, line) : param->type;
-			if (param->pre->rpctype == NULL)
-				error(1, 0, "Not an rpc type [%s] "
-				    "at line %d.", param->pre->name, line);
+			if (type == NULL
+			    || strcmp(tok, "void") == 0) 
+				error(1, 0, "Bad parameter type [%s] at "
+				    "line %d.", tok, line);
 
-			tok = strtok(NULL, " ");
-			param->post = tok ? lookup_type(tok, line) : param->pre;
-			if (param->post->rpctype == NULL)
-				error(1, 0, "Not an rpc type [%s] "
-				    "at line %d.", param->post->name, line);
+			param->ctype = type->ctype;
+			param->length_fn = type->length_fn;
 
+			if (strtok(NULL, " "))
+				error(1, 0, "Too many tokens at line %d.",
+				    line);
+			
 			TAILQ_INSERT_TAIL(&fn->params, param, next);
 		} else if (strcmp(tok, "variadic") == 0) {
 			if (fn->va_fn != NULL)
@@ -273,6 +362,49 @@ int main(void)
 			fn->va_fn = _strdup(strtok(NULL, " "));
 			if (fn->va_fn == NULL)
 				error(1, 0, "Keyword 'variadic' must be followed the name of a fixed param version at line %d.", line);
+		} else if (strcmp(tok, "extra") == 0) {
+			extra = check_alloc(malloc(sizeof(struct extra)));
+
+			extra->name = _strdup(strtok(NULL, " "));
+			if (extra->name == NULL)
+				error(1, 0, "extra name not found "
+				    "at line %d.", line);
+
+			tok = strtok(NULL, " ");
+			if (tok == NULL)
+				error(1, 0, "extra must have a type "
+				    "at line %d.", line);
+
+			type = lookup_type(tok);
+
+			if (type == NULL
+			    || strcmp(tok, "void") == 0) 
+				error(1, 0, "Bad extra type [%s] at "
+				    "line %d.", tok, line);
+
+			extra->ctype = type->ctype;
+			extra->length_fn = type->length_fn;
+
+			tok = strtok(NULL, " ");
+			if (tok == NULL)
+				error(1, 0, "extra pre_or_post not found at "
+				    "line %d.", line);
+			else if (strcmp(tok, "pre") == 0)
+				extra->pre_or_post = PRE;
+			else if (strcmp(tok, "post") == 0)
+				extra->pre_or_post = POST;
+			else 
+				error(1, 0, "extra pre_or_post [%s] should be"
+				    " \"pre\" or \"post\"at line %d.",
+				    tok, line);
+
+			extra->init = _strdup(strtok(NULL, ";"));
+
+			if (extra->init == NULL)
+				error(1, 0, "extra needs initialiser at "
+				    "line %d.", line);
+			
+			TAILQ_INSERT_TAIL(&fn->extras, extra, next);
 		}
 	}
 
