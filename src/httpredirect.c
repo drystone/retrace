@@ -31,7 +31,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <error.h>
 #include <sys/select.h>
 
 #include "common.h"
@@ -88,7 +87,7 @@ rtr_setup_http_redirect(const struct sockaddr *addr)
 	return pinfo;
 }
 
-static struct rtr_http_redirect_info * lookup_redirect_info(int fd)
+static struct rtr_http_redirect_info *lookup_redirect_info(int fd)
 {
 	struct descriptor_info *pinfo;
 
@@ -207,7 +206,7 @@ const char *locate_url(char *buf)
 	url = buf + 5;
 	end = real_strchr(url, ' ');
 
-	if (end == NULL ||
+	if (end == NULL || end == url ||
 	    (real_strcmp(end, " HTTP/1.0") && real_strcmp(end, " HTTP/1.1")))
 		return 0;
 
@@ -312,13 +311,16 @@ rtr_http_redirect_response(int fd, void *buf, size_t len, int flags)
 	if (info == NULL || info->filefd == -1 || info->remainder == 0)
 		return 0;
 
+	info->sniffing = 1;
+
 	readlen = info->remainder;
 	if (readlen > len)
 		readlen = len;
 
 	readlen = real_read(info->filefd, buf, readlen);
 	if (readlen <= 0)
-		error(1, errno, "Short or failed read.");
+		/* TODO: error handling */
+		return 0;
 
 	if (flags & MSG_PEEK)
 		lseek(info->filefd, -readlen, SEEK_CUR);

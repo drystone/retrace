@@ -67,6 +67,8 @@ ssize_t RETRACE_IMPLEMENTATION(read)(int fd, void *buf, size_t nbytes)
 
 	if (ret == 0)
 		ret = real_read(fd, buf, real_nbytes);
+	else
+		event_info.extra_info = "[redirected]";
 
 	if (errno)
 		event_info.logging_level |= RTR_LOG_LEVEL_ERR;

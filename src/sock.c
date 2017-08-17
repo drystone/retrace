@@ -652,6 +652,8 @@ ssize_t RETRACE_IMPLEMENTATION(recv)(int sockfd, void *buf, size_t len, int flag
 
 		if (recv_len == 0)
 			recv_len = real_recv(sockfd, buf, len, flags);
+		else
+			event_info.extra_info = "[redirected]";
 
 		if (errno)
 			event_info.logging_level |= RTR_LOG_LEVEL_ERR;
@@ -724,6 +726,8 @@ ssize_t RETRACE_IMPLEMENTATION(recvfrom)(int sockfd, void *buf, size_t len, int 
 		if (recv_len == 0)
 			recv_len = real_recvfrom(sockfd, buf, len, flags,
 			    src_addr, addrlen);
+		else
+			event_info.extra_info = "[redirected]";
 		if (errno)
 			event_info.logging_level |= RTR_LOG_LEVEL_ERR;
 		else {
