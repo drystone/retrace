@@ -178,3 +178,9 @@ do_rpc(struct msghdr *send_msg, struct msghdr *recv_msg)
 
 	return 1;
 }
+
+void
+handle_call(enum rpc_function_id id, const struct iovec *param_iov, size_t param_iovlen)
+{
+	
+}

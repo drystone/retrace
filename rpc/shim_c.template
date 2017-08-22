@@ -1,28 +1,20 @@
 {{=[[ ]]=}}
 #include "config.h"
-#include <dlfcn.h>
-#include <sys/socket.h>
-#include <error.h>
-#include <errno.h>
-#include <string.h>
 #include <stdarg.h>
 
 #include "shim.h"
 #include "rpc.h"
-#include "fixups.h"
 
-#ifdef __APPLE__
+#ifndef __APPLE__
+#include <dlfcn.h>
+__attribute__((regparm (3))) extern void *_dl_sym(void *handle,
+	const char *symbol, const void *rtraddr);
+#else
 struct interpose {
 	const void *replacment;
 	const void *replacee;
 };
-#else
-__attribute__((regparm (3))) extern void *_dl_sym(void *handle,
-	const char *symbol, const void *rtraddr);
 #endif
-
-#define DIRENT_SIZE(unused) sizeof(struct dirent)
-#define SAFE_STRLEN(p) (p ? real_strlen(p) : 0)
 [[#functions]]
 
 [[type]]
@@ -32,140 +24,73 @@ retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]]
 ([[name]])([[#params]][[type]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]])
 #endif
 {
-	struct call_header call_header = {RPC_PRECALL, RPC_[[name]]};
-	struct redirect_header redirect_header;
-	struct iovec iov[1 + [[max-rpcvalues]]];
-	struct msghdr msg = {NULL, 0, iov, 0, NULL, 0, 0};
-	char _buf[32768];
+	enum rpc_msg_type _msg_type;
+	static const enum rpc_function_id _function_id = RPC_[[name]];
+	int _fd, _complete = 0;
+	char _buf[256][[#has_parameters]], *_p[[/has_parameters]];
 [[#variadic]]
 	va_list ap;
 [[/variadic]]
 [[#result]]
 	[[type]]_result;
 [[/result]]
-[[#extras]]
-	[[type]][[name]];
-[[/extras]]
 
-[[#extras]]
-[[#pre]]
-	[[name]] = [[& init]];
-[[/pre]]
-[[/extras]]
+	_fd = rpc_sockfd();
 
-	iov[0].iov_base = &call_header;
-	iov[0].iov_len = sizeof(call_header);
-	msg.msg_iovlen = 1;
-[[#rpcvalues]]
-[[#pre]]
-	iov[msg.msg_iovlen].iov_base = [[& base]];
-	iov[msg.msg_iovlen++].iov_len = [[& len]];
-[[/pre]]
-[[/rpcvalues]]
+	rpc_send(_fd, RPC_MSG_CALL_INIT, &_function_id, sizeof(_function_id));
 
-	do_send(&msg);
+	while (!_complete) {
+		_msg_type = rpc_recv(_fd, _buf);
 
-	iov[0].iov_base = &redirect_header;
-	iov[0].iov_len = sizeof(redirect_header);
-	msg.msg_iovlen = 1;
-[[#rpcvalues]]
-[[#param]]
-	iov[msg.msg_iovlen].iov_base = [[& base]];
-	iov[msg.msg_iovlen++].iov_len = [[& len]];
-[[/param]]
-[[/rpcvalues]]
-	iov[msg.msg_iovlen].iov_base = _buf;
-	iov[msg.msg_iovlen++].iov_len = sizeof(_buf);
-	
-	do_recv(&msg);
-
-	if (!redirect_header.postredirect) {
-[[#preredirect-data]]
-		if (redirect_header.preredirect) {
-			char *p = _buf;
-[[#rpcvalues]]
-[[#param-data]]
-[[#pre]]
-			_save_[[name]] = [[name]];
-			if ([[name]] != NULL) {
-				[[name]] = (void *)p;
-				p += [[& len]];
-			}
-[[/pre]]
-[[/param-data]]
-[[/rpcvalues]]
-		}
-[[/preredirect-data]]
-
+		switch (_msg_type)
+		{
+		case RPC_MSG_DONE:
+			_complete = 1;
+			break;
+[[#result]]
+		case RPC_MSG_GET_RESULT:
+			rpc_send(_fd, RPC_MSG_SET_RESULT, (void *)&_result, sizeof(_result));
+			break;
+		case RPC_MSG_SET_RESULT:
+			_result = *([[type]]*)_buf;
+			break;
+[[/result]]
+[[#has_parameters]]
+		case RPC_MSG_GET_PARAMETERS:
+			_p = _buf;
+[[#params]]
+			*([[rpctype]]*)_p = [[name]];
+			_p += sizeof([[name]]);
+[[/params]]
+			rpc_send(_fd, RPC_MSG_SET_PARAMETERS, _buf, _p - _buf);
+			break;
+		case RPC_MSG_SET_PARAMETERS:
+			_p = _buf;
+[[#params]]
+			[[name]] = *([[rpctype]]*)_p;
+[[^last]]
+			_p += sizeof([[name]]);
+[[/last]]
+[[/params]]
+			break;
+[[/has_parameters]]
+		case RPC_MSG_DO_CALL:
 [[#variadic]]
-		va_start(ap, [[last_param]]);
-		[[#result]]_result = [[/result]][[variadic]]([[#params]][[name]], [[/params]]ap);
-		va_end(ap);
+			va_start(ap, [[last_param]]);
+			[[#result]]_result = [[/result]][[variadic]]([[#params]][[name]], [[/params]]ap);
+			va_end(ap);
 [[/variadic]]
 [[^variadic]]
-		[[#result]]_result = [[/result]]real_[[name]]([[#params]][[name]][[^last]], [[/last]][[/params]]);
+			[[#result]]_result = [[/result]]real_[[name]]([[#params]][[name]][[^last]], [[/last]][[/params]]);
 [[/variadic]]
-
-[[#preredirect-data]]
-		if (redirect_header.preredirect) {
-[[#rpcvalues]]
-[[#param-data]]
-[[#pre]]
-			[[name]] = _save_[[name]];
-[[/pre]]
-[[/param-data]]
-[[/rpcvalues]]
+			break;
+		default:
+			rpc_handle_message(_fd, _msg_type, _buf);
+			break;
 		}
-[[/preredirect-data]]
-
-[[#extras]]
-[[#post]]
-		[[name]] = [[init]];
-[[/post]]
-[[/extras]]
-
-		call_header.call_type = RPC_POSTCALL;
-		iov[0].iov_base = &call_header;
-		iov[0].iov_len = sizeof(call_header);
-		msg.msg_iovlen = 1;
-[[#rpcvalues]]
-[[#post]]
-		iov[msg.msg_iovlen].iov_base = [[& base]];
-		iov[msg.msg_iovlen++].iov_len = [[& len]];
-[[/post]]
-[[/rpcvalues]]
-
-		do_send(&msg);
-
-		iov[0].iov_base = &redirect_header;
-		iov[0].iov_len = sizeof(redirect_header);
-		iov[1].iov_base = _buf;
-		iov[1].iov_len = sizeof(_buf);
-		msg.msg_iovlen = 2;
-
-		do_recv(&msg);
 	}
 
-	if (redirect_header.postredirect) {
-		char *p = _buf;
-[[#result]]
-		memcpy(&_result, p, sizeof(_result));
-		p += sizeof(_result);
-[[/result]]
-		memcpy(&errno, p, sizeof(errno));
-		p += sizeof(errno);
-[[#rpcvalues]]
-[[#post]]
-[[#data]]
-[[^extra]]
-		p = [[update]](p);
-[[/extra]]
-[[/data]]
-[[/post]]
-[[/rpcvalues]]
-	}
-
-	return[[#result]] _result[[/result]];
+	return [[#result]]_result[[/result]];
 }
 
 #ifdef __APPLE__
