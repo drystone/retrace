@@ -5,6 +5,9 @@
 #include "shim.h"
 #include "rpc.h"
 
+#include "error.h"
+#include "errno.h"
+#
 #ifndef __APPLE__
 #include <dlfcn.h>
 __attribute__((regparm (3))) extern void *_dl_sym(void *handle,
@@ -25,9 +28,9 @@ retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]]
 #endif
 {
 	enum rpc_msg_type _msg_type;
-	static const enum rpc_function_id _function_id = RPC_[[name]];
 	int _fd, _complete = 0;
-	char _buf[256][[#has_parameters]], *_p[[/has_parameters]];
+	char _buf[256], *_p;
+	int _errno;
 [[#variadic]]
 	va_list ap;
 [[/variadic]]
@@ -37,33 +40,28 @@ retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]]
 
 	_fd = rpc_sockfd();
 
-	rpc_send(_fd, RPC_MSG_CALL_INIT, &_function_id, sizeof(_function_id));
+	*(enum rpc_function_id *)_buf = RPC_[[name]];
+	_p = _buf + sizeof(enum rpc_function_id);
+[[#params]]
+	*([[rpctype]]*)_p = [[name]];
+	_p += sizeof([[name]]);
+[[/params]]
+
+	rpc_send(_fd, RPC_MSG_CALL_INIT, _buf, _p - _buf);
 
 	while (!_complete) {
-		_msg_type = rpc_recv(_fd, _buf);
+		_errno = errno;
+		rpc_recv(_fd, &_msg_type, _buf);
+		errno = _errno;
 
 		switch (_msg_type)
 		{
-		case RPC_MSG_DONE:
-			_complete = 1;
-			break;
 [[#result]]
-		case RPC_MSG_GET_RESULT:
-			rpc_send(_fd, RPC_MSG_SET_RESULT, (void *)&_result, sizeof(_result));
-			break;
 		case RPC_MSG_SET_RESULT:
 			_result = *([[type]]*)_buf;
 			break;
 [[/result]]
 [[#has_parameters]]
-		case RPC_MSG_GET_PARAMETERS:
-			_p = _buf;
-[[#params]]
-			*([[rpctype]]*)_p = [[name]];
-			_p += sizeof([[name]]);
-[[/params]]
-			rpc_send(_fd, RPC_MSG_SET_PARAMETERS, _buf, _p - _buf);
-			break;
 		case RPC_MSG_SET_PARAMETERS:
 			_p = _buf;
 [[#params]]
@@ -83,9 +81,15 @@ retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]]
 [[^variadic]]
 			[[#result]]_result = [[/result]]real_[[name]]([[#params]][[name]][[^last]], [[/last]][[/params]]);
 [[/variadic]]
+[[#result]]
+			rpc_send(_fd, RPC_MSG_CALL_RESULT, &_result, sizeof(_result));
+[[/result]]
+[[^result]]
+			rpc_send(_fd, RPC_MSG_CALL_RESULT, NULL, 0);
+[[/result]]
 			break;
 		default:
-			rpc_handle_message(_fd, _msg_type, _buf);
+			_complete = rpc_handle_message(_fd, _msg_type, _buf);
 			break;
 		}
 	}

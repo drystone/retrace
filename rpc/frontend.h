@@ -13,6 +13,7 @@ struct retrace_rpc_endpoint {
 	pid_t pid;
 	int thread_num;
 	unsigned int call_num;
+	unsigned int call_depth;
 };
 
 SLIST_HEAD(retrace_endpoints, retrace_rpc_endpoint);
@@ -31,7 +32,7 @@ struct retrace_handle {
 	int control_fd;
 };
 
-typedef void (*retrace_call_handler_t)(const struct retrace_rpc_endpoint *ep);
+typedef void (*retrace_call_handler_t)(struct retrace_rpc_endpoint *ep, void *buf);
 
 extern retrace_call_handler_t g_call_handlers[];
 
@@ -41,6 +42,7 @@ void retrace_trace(struct retrace_handle *handle);
 void retrace_handle_call(const struct retrace_rpc_endpoint *ep);
 void retrace_set_call_handler(enum rpc_function_id,
 	retrace_call_handler_t handler);
+void do_call(struct retrace_rpc_endpoint *ep, void *buf, size_t len);
 
 void *trace_buffer(void *buffer, size_t length);
 #endif

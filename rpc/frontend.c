@@ -218,8 +218,7 @@ retrace_trace(struct retrace_handle *handle)
 			if (!FD_ISSET(endpoint->fd, &readfds))
 				continue;
 
-			msg_type = rpc_recv(endpoint->fd, buf);
-			if (msg_type == RPC_MSG_ERROR) {
+			if (!rpc_recv(endpoint->fd, &msg_type, buf)) {
 				SLIST_REMOVE(&handle->endpoints, endpoint,
 				    retrace_rpc_endpoint, next);
 				close(endpoint->fd);
@@ -229,12 +228,48 @@ retrace_trace(struct retrace_handle *handle)
 
 			assert(msg_type == RPC_MSG_CALL_INIT);
 
+			++endpoint->call_num;
 			fnid = *(enum rpc_function_id *)buf;
-			g_call_handlers[fnid](endpoint);
+			g_call_handlers[fnid](endpoint, buf);
 			rpc_send(endpoint->fd, RPC_MSG_DONE, NULL, 0);
-			++(endpoint->call_num);
 		}
 	}
+}
+
+void
+do_call(struct retrace_rpc_endpoint *ep, void *buf, size_t len)
+{
+	enum rpc_msg_type msg_type;
+	char recv_buf[RPC_MSG_LEN_MAX];
+	enum rpc_function_id fnid;
+
+	rpc_send(ep->fd, RPC_MSG_DO_CALL, NULL, 0);
+
+	/* 
+	 * We are going to get a RPC_MSG_CALL_RESULT or
+	 * a RPC_MSG_CALL_INIT if there are nested calls
+	 * in the traced call
+	 */
+	for (;;) {
+		memset(recv_buf, 0, sizeof(recv_buf));
+		if (!rpc_recv(ep->fd, &msg_type, recv_buf))
+			break;
+
+		if (msg_type == RPC_MSG_CALL_RESULT)
+			break;
+
+		if (msg_type != RPC_MSG_CALL_INIT)
+			printf("%d\n", msg_type);
+		assert(msg_type == RPC_MSG_CALL_INIT);
+
+		++ep->call_depth;
+		++(ep->call_num);
+		fnid = *(enum rpc_function_id *)recv_buf;
+		g_call_handlers[fnid](ep, recv_buf);
+		rpc_send(ep->fd, RPC_MSG_DONE, NULL, 0);
+		--ep->call_depth;
+	}
+	memcpy(buf, recv_buf, len);
 }
 
 retrace_call_handler_t
