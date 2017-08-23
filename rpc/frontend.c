@@ -80,6 +80,7 @@ recv_endpoint(int fd)
 	endpoint = malloc(sizeof(struct retrace_rpc_endpoint));
 	endpoint->fd = *(int *)CMSG_DATA(cmsg);
 	endpoint->pid = header.pid;
+	SLIST_INIT(&endpoint->call_stack);
 
 	return endpoint;
 }
@@ -185,11 +186,47 @@ retrace_close(struct retrace_handle *handle)
 	free(handle);
 }
 
+static void
+handle_precall(struct retrace_rpc_endpoint *ep, void *buf)
+{
+	struct rpc_call_context *ctx;
+	void *context = NULL;
+	enum rpc_function_id function_id;
+
+	++ep->call_num;
+	++ep->call_depth;
+	function_id = *(enum rpc_function_id *)buf;
+	if (g_precall_handlers[function_id](ep, buf, &context)) {
+		ctx = malloc(sizeof(struct rpc_call_context));
+		ctx->function_id = function_id;
+		ctx->context = context;
+		SLIST_INSERT_HEAD(&ep->call_stack, ctx, next);
+		rpc_send(ep->fd, RPC_MSG_DO_CALL, NULL, 0);
+	} else {
+		rpc_send(ep->fd, RPC_MSG_DONE, NULL, 0);
+		--ep->call_depth;
+	}
+}
+
+static void
+handle_postcall(struct retrace_rpc_endpoint *ep, void *buf)
+{
+	struct rpc_call_context *ctx;
+
+	ctx = SLIST_FIRST(&ep->call_stack);
+	SLIST_REMOVE_HEAD(&ep->call_stack, next);
+
+	g_postcall_handlers[ctx->function_id](ep, buf, ctx->context);
+
+	rpc_send(ep->fd, RPC_MSG_DONE, NULL, 0);
+	--ep->call_depth;
+	free(ctx);
+}
+
 void
 retrace_trace(struct retrace_handle *handle)
 {
 	enum rpc_msg_type msg_type;
-	enum rpc_function_id fnid;
 	char buf[RPC_MSG_LEN_MAX];
 	fd_set readfds;
 	struct retrace_rpc_endpoint *endpoint;
@@ -226,59 +263,38 @@ retrace_trace(struct retrace_handle *handle)
 				break;
 			}
 
-			assert(msg_type == RPC_MSG_CALL_INIT);
-
-			++endpoint->call_num;
-			fnid = *(enum rpc_function_id *)buf;
-			g_call_handlers[fnid](endpoint, buf);
-			rpc_send(endpoint->fd, RPC_MSG_DONE, NULL, 0);
+			if (msg_type == RPC_MSG_CALL_INIT)
+				handle_precall(endpoint, buf);
+			else if (msg_type == RPC_MSG_CALL_RESULT)
+				handle_postcall(endpoint, buf);
+			else
+				assert(0);
 		}
 	}
 }
 
-void
-do_call(struct retrace_rpc_endpoint *ep, void *buf)
+retrace_precall_handler_t
+retrace_get_precall_handler(enum rpc_function_id id)
 {
-	enum rpc_msg_type msg_type;
-	enum rpc_function_id fnid;
-
-	rpc_send(ep->fd, RPC_MSG_DO_CALL, NULL, 0);
-
-	/* 
-	 * We are going to get a RPC_MSG_CALL_RESULT or
-	 * a RPC_MSG_CALL_INIT if there are nested calls
-	 * in the traced call
-	 */
-	for (;;) {
-		if (!rpc_recv(ep->fd, &msg_type, buf))
-			break;
-
-		if (msg_type == RPC_MSG_CALL_RESULT)
-			break;
-
-		if (msg_type != RPC_MSG_CALL_INIT)
-			printf("%d\n", msg_type);
-		assert(msg_type == RPC_MSG_CALL_INIT);
-
-		++ep->call_depth;
-		++ep->call_num;
-		fnid = *(enum rpc_function_id *)buf;
-		g_call_handlers[fnid](ep, buf);
-		rpc_send(ep->fd, RPC_MSG_DONE, NULL, 0);
-		--ep->call_depth;
-	}
+	return g_precall_handlers[id];
 }
 
-retrace_call_handler_t
-retrace_get_call_handler(enum rpc_function_id id)
+retrace_postcall_handler_t
+retrace_get_postcall_handler(enum rpc_function_id id)
 {
-	return g_call_handlers[id];
+	return g_postcall_handlers[id];
 }
 
 void
-retrace_set_call_handler(enum rpc_function_id id, retrace_call_handler_t fn)
+retrace_set_precall_handler(enum rpc_function_id id, retrace_precall_handler_t fn)
 {
-	g_call_handlers[id] = fn;
+	g_precall_handlers[id] = fn;
+}
+
+void
+retrace_set_postcall_handler(enum rpc_function_id id, retrace_postcall_handler_t fn)
+{
+	g_postcall_handlers[id] = fn;
 }
 
 void *

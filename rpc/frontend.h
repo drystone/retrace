@@ -7,6 +7,14 @@
 #include "rpc.h"
 #include "shim.h"
 
+struct rpc_call_context {
+	SLIST_ENTRY(rpc_call_context) next;
+	enum rpc_function_id function_id;
+	void *context;
+};
+
+SLIST_HEAD(rpc_call_stack, rpc_call_context);
+
 struct retrace_rpc_endpoint {
 	SLIST_ENTRY(retrace_rpc_endpoint) next;
 	int fd;
@@ -14,6 +22,7 @@ struct retrace_rpc_endpoint {
 	int thread_num;
 	unsigned int call_num;
 	unsigned int call_depth;
+	struct rpc_call_stack call_stack;
 };
 
 SLIST_HEAD(retrace_endpoints, retrace_rpc_endpoint);
@@ -32,17 +41,20 @@ struct retrace_handle {
 	int control_fd;
 };
 
-typedef void (*retrace_call_handler_t)(struct retrace_rpc_endpoint *ep, void *buf);
+typedef int (*retrace_precall_handler_t)(struct retrace_rpc_endpoint *ep, void *buf, void **context);
+typedef void (*retrace_postcall_handler_t)(struct retrace_rpc_endpoint *ep, void *buf, void *context);
 
-extern retrace_call_handler_t g_call_handlers[];
+extern retrace_precall_handler_t g_precall_handlers[];
+extern retrace_postcall_handler_t g_postcall_handlers[];
 
 struct retrace_handle *retrace_start(char *const argv[]);
 void retrace_close(struct retrace_handle *handle);
 void retrace_trace(struct retrace_handle *handle);
 void retrace_handle_call(const struct retrace_rpc_endpoint *ep);
-void retrace_set_call_handler(enum rpc_function_id,
-	retrace_call_handler_t handler);
-void do_call(struct retrace_rpc_endpoint *ep, void *buf);
+void retrace_set_postcall_handler(enum rpc_function_id,
+	retrace_postcall_handler_t handler);
+void retrace_set_precall_handler(enum rpc_function_id,
+	retrace_precall_handler_t handler);
 
 void *trace_buffer(void *buffer, size_t length);
 #endif

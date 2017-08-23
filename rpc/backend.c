@@ -34,6 +34,7 @@
 
 #include "shim.h"
 #include "rpc.h"
+#include "backend.h"
 
 /*
  * TODO: pthread_setspecific(g_fdkey, (void *)-1);

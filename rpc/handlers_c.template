@@ -1,32 +1,45 @@
 {{=[[ ]]=}}
-#include <string.h>
+#include <stdlib.h>
 #include "shim.h"
 #include "rpc.h"
 #include "frontend.h"
 [[#functions]]
 
-void
-default_[[name]]_handler(struct retrace_rpc_endpoint *ep, void *buf)
+int
+default_[[name]]_precall_handler(struct retrace_rpc_endpoint *ep, void *buf, void **context)
 {
-	int call_num = ep->call_num;
 [[#has_parameters]]
-	struct rpc_[[name]]_params *_params = (struct rpc_[[name]]_params *)buf;
+	struct rpc_[[name]]_params *params = malloc(sizeof(struct rpc_[[name]]_params));
+	*params = *(struct rpc_[[name]]_params *)buf;
+	*context = params;
+[[/has_parameters]]
+
+	return 1;
+}
+
+void
+default_[[name]]_postcall_handler(struct retrace_rpc_endpoint *ep, void *buf, void *context)
+{
+[[#has_parameters]]
+	struct rpc_[[name]]_params *_params = (struct rpc_[[name]]_params *)context;
 [[/has_parameters]]
 [[#result]]
-	[[type]]result;
+	[[type]]result = *([[type]]*)buf;
 [[/result]]
 
-	do_call(ep, buf);
-[[#result]]
-	result = *([[type]]*)buf;
-[[/result]]
-	printf("(%d:%d %d)%.*s[[name]]()\n", ep->pid, ep->thread_num, call_num, ep->call_depth + 1, "\t\t\t\t\t");
+	printf("(%d:%d %d)%.*s[[name]]()\n", ep->pid, ep->thread_num, ep->call_num, ep->call_depth + 1, "\t\t\t\t\t");
 }
 
 [[/functions]]
 
-retrace_call_handler_t g_call_handlers[] = {
+retrace_precall_handler_t g_precall_handlers[] = {
 	[[#functions]]
-	default_[[name]]_handler[[^last]],[[/last]]
+	default_[[name]]_precall_handler[[^last]],[[/last]]
+	[[/functions]]
+};
+
+retrace_postcall_handler_t g_postcall_handlers[] = {
+	[[#functions]]
+	default_[[name]]_postcall_handler[[^last]],[[/last]]
 	[[/functions]]
 };

@@ -25,10 +25,7 @@ struct rpc_control_header {
 	pthread_t tid;
 };
 
-int rpc_sockfd();
-
 int rpc_send(int fd, enum rpc_msg_type msg_type, const void *buf, size_t len);
 int rpc_recv(int fd, enum rpc_msg_type *msg_type, void *buf);
-int rpc_handle_message(int _fd, enum rpc_msg_type msg_type, void *buf);
 
 #endif
