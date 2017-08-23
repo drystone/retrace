@@ -10,31 +10,17 @@ default_[[name]]_handler(struct retrace_rpc_endpoint *ep, void *buf)
 {
 	int call_num = ep->call_num;
 [[#has_parameters]]
-	char *p = buf;
-[[#params]]
-	[[rpctype]]_[[name]];
-[[/params]]
+	struct rpc_[[name]]_params *_params = (struct rpc_[[name]]_params *)buf;
 [[/has_parameters]]
 [[#result]]
 	[[type]]result;
 [[/result]]
 
-[[#params]]
-	_[[name]] = *([[rpctype]]*)p;
-[[^last]]
-	p += sizeof([[rpctype]]);
-[[/last]]
-[[/params]]
-
-	++ep->call_depth;
+	do_call(ep, buf);
 [[#result]]
-	do_call(ep, &result, sizeof(result));
+	result = *([[type]]*)buf;
 [[/result]]
-[[^result]]
-	do_call(ep, NULL, 0);
-[[/result]]
-	printf("(%d:%d %d)%.*s[[name]]()\n", ep->pid, ep->thread_num, call_num, ep->call_depth, "\t\t\t\t\t");
-	--ep->call_depth;
+	printf("(%d:%d %d)%.*s[[name]]()\n", ep->pid, ep->thread_num, call_num, ep->call_depth + 1, "\t\t\t\t\t");
 }
 
 [[/functions]]

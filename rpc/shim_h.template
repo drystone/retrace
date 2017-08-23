@@ -13,60 +13,20 @@ enum rpc_function_id {
 	RPC_[[name]],
 	[[/functions]]
 };
+
 [[#functions]]
-
-struct precall_[[name]] {
-	[[#num_params]]
-	struct {
-		[[#params]]
-		[[type]][[name]];
-		[[/params]]
-	} args;
-	[[/num_params]]
-	[[^num_params]]
-	char unused;
-	[[/num_params]]
+struct rpc_[[name]]_params {
+	enum rpc_function_id function_id;
+	[[#params]]
+	[[rpctype]][[name]];
+	[[/params]]
 };
 
-struct postcall_[[name]] {
-	[[#result]]
-	[[type]]result;
-	[[/result]]
-	int _errno;
-	[[#num_params]]
-	struct {
-		[[#params]]
-		[[type]][[name]];
-		[[/params]]
-	} args;
-	[[/num_params]]
-};
+[[/functions]]
 
-struct precall_redirect_[[name]] {
-	struct precall_[[name]] *precall_redirect;
-	struct postcall_[[name]] *postcall_redirect;
-};
-
+[[#functions]]
 typedef [[type]](*rtr_[[name]]_t)([[#params]][[type]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]]);
 extern rtr_[[name]]_t real_[[name]];
 [[/functions]]
-
-union rpc_precall {
-	[[#functions]]
-	struct precall_[[name]] precall_[[name]];
-	[[/functions]]
-};
-
-union rpc_postcall {
-	[[#functions]]
-	struct postcall_[[name]] postcall_[[name]];
-	[[/functions]]
-};
-
-union rpc_precall_redirect {
-	[[#functions]]
-	struct precall_redirect_[[name]] precall_redirect_[[name]];
-	[[/functions]]
-};
 
 #endif

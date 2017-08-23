@@ -237,10 +237,9 @@ retrace_trace(struct retrace_handle *handle)
 }
 
 void
-do_call(struct retrace_rpc_endpoint *ep, void *buf, size_t len)
+do_call(struct retrace_rpc_endpoint *ep, void *buf)
 {
 	enum rpc_msg_type msg_type;
-	char recv_buf[RPC_MSG_LEN_MAX];
 	enum rpc_function_id fnid;
 
 	rpc_send(ep->fd, RPC_MSG_DO_CALL, NULL, 0);
@@ -251,8 +250,7 @@ do_call(struct retrace_rpc_endpoint *ep, void *buf, size_t len)
 	 * in the traced call
 	 */
 	for (;;) {
-		memset(recv_buf, 0, sizeof(recv_buf));
-		if (!rpc_recv(ep->fd, &msg_type, recv_buf))
+		if (!rpc_recv(ep->fd, &msg_type, buf))
 			break;
 
 		if (msg_type == RPC_MSG_CALL_RESULT)
@@ -263,13 +261,12 @@ do_call(struct retrace_rpc_endpoint *ep, void *buf, size_t len)
 		assert(msg_type == RPC_MSG_CALL_INIT);
 
 		++ep->call_depth;
-		++(ep->call_num);
-		fnid = *(enum rpc_function_id *)recv_buf;
-		g_call_handlers[fnid](ep, recv_buf);
+		++ep->call_num;
+		fnid = *(enum rpc_function_id *)buf;
+		g_call_handlers[fnid](ep, buf);
 		rpc_send(ep->fd, RPC_MSG_DONE, NULL, 0);
 		--ep->call_depth;
 	}
-	memcpy(buf, recv_buf, len);
 }
 
 retrace_call_handler_t

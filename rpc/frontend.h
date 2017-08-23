@@ -42,7 +42,7 @@ void retrace_trace(struct retrace_handle *handle);
 void retrace_handle_call(const struct retrace_rpc_endpoint *ep);
 void retrace_set_call_handler(enum rpc_function_id,
 	retrace_call_handler_t handler);
-void do_call(struct retrace_rpc_endpoint *ep, void *buf, size_t len);
+void do_call(struct retrace_rpc_endpoint *ep, void *buf);
 
 void *trace_buffer(void *buffer, size_t length);
 #endif

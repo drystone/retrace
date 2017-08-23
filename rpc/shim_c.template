@@ -29,7 +29,11 @@ retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]]
 {
 	enum rpc_msg_type _msg_type;
 	int _fd, _complete = 0;
-	char _buf[256], *_p;
+	char _buf[RPC_MSG_LEN_MAX];
+	struct rpc_[[name]]_params _params = {RPC_[[name]][[#params]], [[name]][[/params]]};
+[[#has_parameters]]
+	struct rpc_[[name]]_params *_buf_params = (struct rpc_[[name]]_params *)_buf;
+[[/has_parameters]]
 	int _errno;
 [[#variadic]]
 	va_list ap;
@@ -39,15 +43,7 @@ retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]]
 [[/result]]
 
 	_fd = rpc_sockfd();
-
-	*(enum rpc_function_id *)_buf = RPC_[[name]];
-	_p = _buf + sizeof(enum rpc_function_id);
-[[#params]]
-	*([[rpctype]]*)_p = [[name]];
-	_p += sizeof([[name]]);
-[[/params]]
-
-	rpc_send(_fd, RPC_MSG_CALL_INIT, _buf, _p - _buf);
+	rpc_send(_fd, RPC_MSG_CALL_INIT, &_params, sizeof(_params));
 
 	while (!_complete) {
 		_errno = errno;
@@ -63,12 +59,8 @@ retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]]
 [[/result]]
 [[#has_parameters]]
 		case RPC_MSG_SET_PARAMETERS:
-			_p = _buf;
 [[#params]]
-			[[name]] = *([[rpctype]]*)_p;
-[[^last]]
-			_p += sizeof([[name]]);
-[[/last]]
+			[[name]] = _buf_params->[[name]];
 [[/params]]
 			break;
 [[/has_parameters]]
