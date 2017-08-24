@@ -193,7 +193,6 @@ handle_precall(struct retrace_rpc_endpoint *ep, void *buf)
 	void *context = NULL;
 	enum rpc_function_id function_id;
 
-	++ep->call_num;
 	++ep->call_depth;
 	function_id = *(enum rpc_function_id *)buf;
 	if (g_precall_handlers[function_id](ep, buf, &context)) {
@@ -216,6 +215,7 @@ handle_postcall(struct retrace_rpc_endpoint *ep, void *buf)
 	ctx = SLIST_FIRST(&ep->call_stack);
 	SLIST_REMOVE_HEAD(&ep->call_stack, next);
 
+	++ep->call_num;
 	g_postcall_handlers[ctx->function_id](ep, buf, ctx->context);
 
 	rpc_send(ep->fd, RPC_MSG_DONE, NULL, 0);
