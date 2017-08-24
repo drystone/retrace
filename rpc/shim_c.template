@@ -20,9 +20,9 @@ struct interpose {
 [[#functions]]
 
 #ifdef __APPLE__
-[[type]]retrace_impl_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]])
+[[ctype]]retrace_impl_[[name]]([[#params]][[ctype]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]])
 #else
-[[type]]([[name]])([[#params]][[type]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]])
+[[ctype]]([[name]])([[#params]][[ctype]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]])
 #endif
 {
 	enum rpc_msg_type _msg_type;
@@ -36,7 +36,7 @@ struct interpose {
 	va_list ap;
 [[/variadic]]
 [[#result]]
-	[[type]]_result;
+	[[ctype]]_result;
 [[/result]]
 
 	if (!rpc_backend_send(RPC_MSG_CALL_INIT, &_params, sizeof(_params)))
@@ -51,7 +51,7 @@ struct interpose {
 		switch (_msg_type) {
 [[#result]]
 		case RPC_MSG_SET_RESULT:
-			_result = *([[type]]*)_buf;
+			_result = *([[ctype]]*)_buf;
 			break;
 [[/result]]
 [[#has_parameters]]
@@ -102,7 +102,7 @@ static struct interpose _interpose_[[name]] __attribute__((used, section("__DATA
 };
 rtr_[[name]]_t real_[[name]] = [[name]];
 #else
-[[type]]rtr_fixup_[[name]]([[#params]][[type]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]])
+[[ctype]]rtr_fixup_[[name]]([[#params]][[ctype]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]])
 {
 	void *fn = _dl_sym(RTLD_NEXT, "[[name]]", rtr_fixup_[[name]]);
 #ifdef HAVE_ATOMIC_BUILTINS
@@ -116,7 +116,7 @@ rtr_[[name]]_t real_[[name]] = [[name]];
 [[#variadic]]
 	va_list ap;
 	va_start(ap, [[last_param]]);
-	[[#result]][[type]]ret = [[/result]][[variadic]]([[#params]][[name]], [[/params]]ap);
+	[[#result]][[ctype]]ret = [[/result]][[variadic]]([[#params]][[name]], [[/params]]ap);
 	va_end(ap);
 	return[[#result]] ret[[/result]];
 [[/variadic]]

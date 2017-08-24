@@ -78,6 +78,7 @@ struct rpctype {
 struct param {
 	TAILQ_ENTRY(param) next;
 	const char *name;
+	const char *type;
 	const char *ctype;
 	const char *rpctype;
 };
@@ -87,7 +88,9 @@ TAILQ_HEAD(param_list, param);
 struct function {
 	STAILQ_ENTRY(function) next;
 	const char *name;
-	const struct type *type;
+	const char *type;
+	const char *ctype;
+	const char *rpctype;
 	struct param_list params;
 	const char *va_fn;
 };
@@ -131,8 +134,10 @@ void yaml(struct function_list *fns)
 	STAILQ_FOREACH(fn, fns, next) {
 
 		printf("- name: %s\n", fn->name);
-		printf("  type: \"%s\"\n", fn->type->ctype);
-		if (strcmp(fn->type->name, "void") != 0)
+		printf("  type: \"%s\"\n", fn->type);
+		printf("  ctype: \"%s\"\n", fn->ctype);
+		printf("  rpctype: \"%s\"\n", fn->rpctype);
+		if (strcmp(fn->type, "void") != 0)
 			printf("  result: true\n");
 
 		if (!TAILQ_EMPTY(&(fn->params))) {
@@ -143,6 +148,8 @@ void yaml(struct function_list *fns)
 		TAILQ_FOREACH(param, &(fn->params), next) {
 			printf("  - name: %s\n", param->name);
 			printf("    type: \"%s\"\n",
+			    param->type);
+			printf("    ctype: \"%s\"\n",
 			    param->ctype);
 			printf("    rpctype: \"%s\"\n",
 			    param->rpctype);
@@ -222,11 +229,17 @@ int main(void)
 				error(1, 0, "Function without type "
 				    "at line %d.", line);
 
-			fn->type = lookup_type(tok);
+			type = lookup_type(tok);
 
-			if (fn->type == NULL)
+			if (type == NULL)
 				error(1, 0, "Bad function type [%s] at "
 				    "line %d.", tok, line);
+
+			fn->type = type->name;
+			fn->ctype = type->ctype;
+			fn->rpctype = type->rpctype;
+			if (fn->rpctype == NULL)
+				fn->rpctype = fn->ctype;
 
 			if (strtok(NULL, " "))
 				error(1, 0, "Too many tokens at line %d.",
@@ -252,6 +265,7 @@ int main(void)
 				error(1, 0, "Bad parameter type [%s] at "
 				    "line %d.", tok, line);
 
+			param->type = type->name;
 			param->ctype = type->ctype;
 			param->rpctype = type->rpctype;
 			if (param->rpctype == NULL)

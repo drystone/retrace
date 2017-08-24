@@ -24,10 +24,21 @@ default_[[name]]_postcall_handler(struct retrace_rpc_endpoint *ep, void *buf, vo
 	struct rpc_[[name]]_params *_params = (struct rpc_[[name]]_params *)context;
 [[/has_parameters]]
 [[#result]]
-	[[type]]result = *([[type]]*)buf;
+	[[rpctype]]result = *([[rpctype]]*)buf;
 [[/result]]
 
-	printf("(%d:%d %d)%.*s[[name]]()\n", ep->pid, ep->thread_num, ep->call_num, ep->call_depth + 1, "\t\t\t\t\t");
+	printf("(%d:%d %d)%.*s[[name]](", ep->pid, ep->thread_num, ep->call_num, ep->call_depth + 1, "\t\t\t\t\t");
+[[#params]]
+	TRACE_[[type]];
+[[^last]]
+	printf(", ");
+[[/last]]
+[[/params]]
+	printf(")");
+[[#result]]
+	printf(" = ");
+[[/result]]
+	printf("\n");
 	return 0;
 }
 

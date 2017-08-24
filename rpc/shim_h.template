@@ -25,7 +25,7 @@ struct rpc_[[name]]_params {
 [[/functions]]
 
 [[#functions]]
-typedef [[type]](*rtr_[[name]]_t)([[#params]][[type]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]]);
+typedef [[ctype]](*rtr_[[name]]_t)([[#params]][[ctype]][[name]][[^last]], [[/last]][[/params]][[#variadic]], ...[[/variadic]]);
 extern rtr_[[name]]_t real_[[name]];
 [[/functions]]
 
