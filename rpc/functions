@@ -150,3 +150,6 @@ parameter n size_t
 ;parameter n pint data both sizeof(int)
 ;parameter stream file
 ;extra fd fd real_fileno(stream)
+
+function close int
+parameter fd fd

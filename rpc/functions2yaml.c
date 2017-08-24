@@ -150,7 +150,7 @@ void yaml(struct function_list *fns)
 
 		if (!TAILQ_EMPTY(&(fn->params)))
 			printf("    last: true\n");
-		
+
 		if (fn->va_fn) {
 			printf("  variadic: %s\n", fn->va_fn);
 			printf("  last_param: %s\n",
@@ -248,7 +248,7 @@ int main(void)
 			type = lookup_type(tok);
 
 			if (type == NULL
-			    || strcmp(tok, "void") == 0) 
+			    || strcmp(tok, "void") == 0)
 				error(1, 0, "Bad parameter type [%s] at "
 				    "line %d.", tok, line);
 
@@ -260,7 +260,7 @@ int main(void)
 			if (strtok(NULL, " "))
 				error(1, 0, "Too many tokens at line %d.",
 				    line);
-			
+
 			TAILQ_INSERT_TAIL(&fn->params, param, next);
 		} else if (strcmp(tok, "variadic") == 0) {
 			if (fn->va_fn != NULL)

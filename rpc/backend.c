@@ -47,7 +47,7 @@ static int g_sockfd = -1;
 static void
 free_tls(void *p)
 {
-	close((long int)p);
+	real_close((long int)p);
 }
 
 static void
@@ -130,16 +130,16 @@ new_rpc_endpoint()
 
 	sendmsg(g_sockfd, &msg, 0);
 
-	close(sv[0]);
+	real_close(sv[0]);
 	return (sv[1]);
 }
 
-int
+static int
 rpc_sockfd()
 {
 	/*
 	 * we only need an fd per thread
-	 * so we'll store (void *)(fd + 1)
+	 * so we'll store (void *)fd
 	 * as address of thread local.
 	 * malloc no good at this point
 	 * for firefox
@@ -157,25 +157,70 @@ rpc_sockfd()
 	return fd;
 }
 
+static void
+rpc_unsockfd()
+{
+	pthread_setspecific(g_fdkey, (void *)-1);
+}
+
 int
-rpc_handle_message(int fd, enum rpc_msg_type msg_type, void *buf)
+rpc_handle_message(enum rpc_msg_type msg_type, void *buf, int *done)
 {
 	int i;
 	char *p;
 
 	switch (msg_type) {
 	case RPC_MSG_DONE:
-		return 1;
+		*done = 1;
+		break;
 	case RPC_MSG_GET_STRING:
 		p = *(char **)buf;
 		for (i = 0; i < RPC_MSG_LEN_MAX && p[i] != '\0'; ++i)
 			((char *)buf)[i] = p[i];
-		rpc_send(fd, RPC_MSG_MISC, buf, i);
+		if (!rpc_backend_send(RPC_MSG_MISC, buf, i))
+			return 0;
 		break;
 	default:
 		error(1, 0, "Unknown RPC message type");
 		break;
 	}
-	return 0;
+	return 1;
 }
 
+int
+rpc_backend_recv(enum rpc_msg_type *msg_type, void *buf)
+{
+	int fd;
+	ssize_t c = 0;
+
+	fd = rpc_sockfd();
+
+	if (fd != -1) {
+		c = rpc_recv(fd, msg_type, buf);
+		if (c == 0)
+			real_close(fd);
+
+		if (c <= 0)
+			rpc_unsockfd();
+	}
+	return (c > 0);
+}
+
+int
+rpc_backend_send(enum rpc_msg_type msg_type, const void *buf, size_t len)
+{
+	int fd;
+	ssize_t c = 0;
+
+	fd = rpc_sockfd();
+
+	if (fd != -1) {
+		c = rpc_send(fd, msg_type, buf, len);
+		if (c == 0)
+			real_close(fd);
+
+		if (c <= 0)
+			rpc_unsockfd();
+	}
+	return (c > 0);
+}

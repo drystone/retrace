@@ -25,7 +25,7 @@ struct rpc_control_header {
 	pthread_t tid;
 };
 
-int rpc_send(int fd, enum rpc_msg_type msg_type, const void *buf, size_t len);
-int rpc_recv(int fd, enum rpc_msg_type *msg_type, void *buf);
+ssize_t rpc_send(int fd, enum rpc_msg_type msg_type, const void *buf, size_t len);
+ssize_t rpc_recv(int fd, enum rpc_msg_type *msg_type, void *buf);
 
 #endif

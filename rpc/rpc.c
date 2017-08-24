@@ -32,30 +32,32 @@
 
 #include "rpc.h"
 
-int
+ssize_t
 rpc_send(int fd, enum rpc_msg_type msg_type, const void *buf, size_t length)
 {
 	struct iovec iov[] =
 	    {{&msg_type, sizeof(msg_type)}, {(void *)buf, length}};
 	struct msghdr msg = {NULL, 0, iov, 2, NULL, 0, 0};
+	ssize_t result;
 
-	while (sendmsg(fd, &msg, 0) == -1)
-		if (errno != EINTR)
-			return 0;
+	do {
+		result = sendmsg(fd, &msg, 0);
+	} while (result == -1 && errno == EINTR);
 
-	return 1;
+	return result;
 }
 
-int
+ssize_t
 rpc_recv(int fd, enum rpc_msg_type *msg_type, void *buf)
 {
 	struct iovec iov[] =
 	    {{msg_type, sizeof(*msg_type)}, {(void *)buf, RPC_MSG_LEN_MAX}};
 	struct msghdr msg = {NULL, 0, iov, 2, NULL, 0, 0};
+	ssize_t result;
 
-	while (recvmsg(fd, &msg, 0) == -1)
-		if (errno != EINTR)
-			return 0;
+	do {
+		result = recvmsg(fd, &msg, 0);
+	} while (result == -1 && errno == EINTR);
 
-	return 1;
+	return result;
 }
