@@ -7,6 +7,25 @@
 #include "rpc.h"
 #include "shim.h"
 
+#define TRACE_char(c)	printf("'%c'", (c))
+#define TRACE_cstring(p)	TRACE_pvoid(p)
+#define TRACE_dir(p)	TRACE_pvoid(p)
+#define TRACE_dirent(p)	TRACE_pvoid(p)
+#define TRACE_file(p)	TRACE_pvoid(p)
+#define TRACE_fd(i)	TRACE_int(i)
+#define TRACE_int(i)	printf("%d", (i))
+#define TRACE_long(i)	printf("%ld", (i))
+#define TRACE_pid_t(i)	TRACE_int(i)
+#define TRACE_pchar(p)	TRACE_pvoid(p)
+#define TRACE_pcvoid(p)	printf("%p", (p))
+#define TRACE_pdirent(p)	TRACE_pvoid(p)
+#define TRACE_pvoid(p)	printf("%p", (p))
+#define TRACE_size_t(i)	TRACE_ulong(i)
+#define TRACE_ssize_t(i)	TRACE_long(i)
+#define TRACE_string(p)	TRACE_pvoid(p)
+#define TRACE_ulong(i)	printf("%lu", (i))
+#define TRACE_va_list(ap)	printf("ap")
+
 struct rpc_call_context {
 	SLIST_ENTRY(rpc_call_context) next;
 	enum rpc_function_id function_id;
