@@ -17,7 +17,7 @@ default_[[name]]_precall_handler(struct retrace_rpc_endpoint *ep, void *buf, voi
 	return 1;
 }
 
-void
+int
 default_[[name]]_postcall_handler(struct retrace_rpc_endpoint *ep, void *buf, void *context)
 {
 [[#has_parameters]]

@@ -61,7 +61,7 @@ struct retrace_handle {
 };
 
 typedef int (*retrace_precall_handler_t)(struct retrace_rpc_endpoint *ep, void *buf, void **context);
-typedef void (*retrace_postcall_handler_t)(struct retrace_rpc_endpoint *ep, void *buf, void *context);
+typedef int (*retrace_postcall_handler_t)(struct retrace_rpc_endpoint *ep, void *buf, void *context);
 
 extern retrace_precall_handler_t g_precall_handlers[];
 extern retrace_postcall_handler_t g_postcall_handlers[];

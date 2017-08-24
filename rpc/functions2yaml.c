@@ -32,12 +32,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-enum pre_or_post {BOTH, PRE, POST};
-
-struct data {
-	const char *length_format;
-};
-
 struct type {
 	const char *name;
 	const char *ctype;
@@ -61,18 +55,6 @@ struct type {
 	{"va_list",	"va_list ",		"void *"	},
 	{"void",	"void ",		NULL		},
 	{NULL,		NULL,			NULL		}
-};
-
-struct rpctype {
-	const char *name;
-	const char *ctype;
-} rpctypes[] = {
-	{"int",		"int "		},
-	{"pid_t",	"pid_t "	},
-	{"ptr",		"void *"	},
-	{"size_t",	"size_t "	},
-	{"ssize_t",	"ssize_t "	},
-	{NULL,		NULL		}
 };
 
 struct param {
